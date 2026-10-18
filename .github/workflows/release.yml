@@ -1,0 +1,103 @@
+# Release: push a tag like v0.1.9 (e.g. from Fork: New Tag… → push), or run it by hand from the
+# Actions tab for an existing tag. The tag decides the version; odd minor versions (0.1.x, 0.3.x)
+# are pre-releases, even ones (0.2.x) are stable releases.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)release, e.g. v0.1.9
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      HAS_VSCE_PAT: ${{ secrets.VSCE_PAT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install and test
+        run: |
+          npm ci
+          npm test
+          npm run check
+
+      - name: Version from tag
+        run: |
+          VERSION="${TAG#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag $TAG is not of the form vMAJOR.MINOR.PATCH"; exit 1
+          fi
+          CURRENT=$(node -p "require('./package.json').version")
+          if [ "$CURRENT" != "$VERSION" ]; then
+            echo "::warning::package.json says $CURRENT; building as $VERSION from the tag. Bump package.json in the next commit."
+            npm version "$VERSION" --no-git-tag-version --allow-same-version
+          fi
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          if [ $((MINOR % 2)) -eq 1 ]; then
+            echo "VSCE_PRE=--pre-release" >> "$GITHUB_ENV"
+            echo "GH_PRE=--prerelease" >> "$GITHUB_ENV"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build packages
+        run: |
+          npx --yes @vscode/vsce@3 package $VSCE_PRE -o "tex-authorship-$VERSION.vsix"
+          (cd latex && zip -X "../authorship-latex-$VERSION.zip" authorship.sty authorship.lua)
+
+      - name: Release notes from commits since the previous tag
+        run: |
+          PREV=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+          RANGE="${PREV:+$PREV..}$TAG"
+          {
+            echo "## Changes"
+            echo
+            git log --no-merges --pretty='- %s' "$RANGE"
+            echo
+            echo "## Install"
+            echo
+            echo "- **VS Code:** search \"TeX Authorship\" in the Extensions panel, or download \`tex-authorship-$VERSION.vsix\` below and run *Extensions: Install from VSIX…*."
+            echo "- **LaTeX package only:** unzip \`authorship-latex-$VERSION.zip\` next to your \`.tex\` file and add \`\\usepackage{authorship}\`."
+            if [ -n "$PREV" ]; then
+              echo
+              echo "Full diff: https://github.com/${{ github.repository }}/compare/$PREV...$TAG"
+            fi
+          } > notes.md
+          cat notes.md
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILES=("tex-authorship-$VERSION.vsix" "authorship-latex-$VERSION.zip")
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" --title "$TAG" --notes-file notes.md $GH_PRE
+          fi
+
+      - name: Publish to the VS Code Marketplace
+        if: env.HAS_VSCE_PAT == 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce@3 publish --packagePath "tex-authorship-$VERSION.vsix" -p "$VSCE_PAT"
+
+      - name: Marketplace skipped
+        if: env.HAS_VSCE_PAT != 'true'
+        run: echo "::notice::No VSCE_PAT secret set, so the Marketplace step was skipped. Upload tex-authorship-$VERSION.vsix from the release by hand."

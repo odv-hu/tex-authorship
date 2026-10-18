@@ -162,4 +162,9 @@ npm run package     # build the .vsix
 
 Open the folder in VS Code and press F5 to try it in a development window with `examples/sample.tex`.
 
+**Releasing.** Push a tag like `v0.1.9` (in Fork: right-click the commit → *New Tag…*, tick *Push*).
+The [release workflow](.github/workflows/release.yml) runs the tests, builds the `.vsix` and the LaTeX zip, creates the GitHub release with notes from the commit messages since the previous tag, and publishes to the VS Code Marketplace.
+The tag sets the version; odd minor versions (0.1.x) go out as pre-releases.
+To repeat a release, run the workflow by hand from the Actions tab with the tag name.
+
 Design decisions are recorded in [`docs/adr/`](docs/adr/), and likely next features in [`docs/roadmap.md`](docs/roadmap.md).

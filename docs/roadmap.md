@@ -13,7 +13,7 @@ The editor tint would use the first colour; the summary legend would show that a
 Configurable column titles and "Total" (e.g. Szerző, Karakterek, Szavak, Összesen), for documents not written in English.
 
 ### Release hygiene
-A `CHANGELOG.md`, a GitHub Action that runs the unit tests and compiles `examples/sample.tex` with LuaLaTeX and pdfLaTeX, and a `CITATION.cff` (with ORCID) so the repository can be cited; Zenodo can then archive releases with a DOI.
+A `CHANGELOG.md`, compiling `examples/sample.tex` with LuaLaTeX and pdfLaTeX in the release workflow, Marketplace publishing without a personal access token (Microsoft retires global Azure DevOps tokens on 1 December 2026; the replacement is Entra ID workload identity federation), and a `CITATION.cff` (with ORCID) so the repository can be cited; Zenodo can then archive releases with a DOI.
 
 ## Git-based authorship
 
