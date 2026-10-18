@@ -27,6 +27,9 @@
 \providecommand\AuthorshipSetSummary[1]{}
 \providecommand\AuthorshipSummary{}
 \providecommand\AuthorshipColor[2]{}
+% Name for your own (unmarked) text in the summary: \AuthorshipOwner{Balázs Fürtön}
+\newcommand\AuthorshipOwnerName{Mine}
+\newcommand\AuthorshipOwner[1]{\gdef\AuthorshipOwnerName{#1}}
 
 \ifdefined\directlua\else
   \PackageInfo{authorship}{Not running LuaLaTeX: author markers stay plain comments}

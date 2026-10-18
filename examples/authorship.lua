@@ -315,12 +315,15 @@ function M.typeset_summary()
   tex.sprint("\\begin{tabular}{@{}l@{\\hspace{0.5em}}l@{\\hspace{1.5em}}rr@{\\hspace{1.5em}}rr@{}}")
   tex.sprint("\\multicolumn{2}{@{}l@{\\hspace{1.5em}}}{Author}&Characters&\\%&Words&\\%\\\\\\hline")
   for _, r in ipairs(rows) do
-    local label = r.key == "Mine" and "Mine" or r.key:sub(2)
     tex.sprint(swatch(r.key) .. "&")
-    tex.sprint(-2, label)
+    if r.key == "Mine" then
+      tex.sprint("\\AuthorshipOwnerName")       -- set with \AuthorshipOwner{...}; TeX accents work too
+    else
+      tex.sprint(-2, r.key:sub(2))
+    end
     tex.sprint(string.format("&%s&%s&%s&%s\\\\", group_digits(r.c), pct(r.c, tc), words(r.w), wpct(r.w)))
   end
-  tex.sprint(string.format("\\hline&Total&%s&%s&%s&%s\\\\", group_digits(tc), pct(tc, tc), words(tw), wpct(tw)))
+  tex.sprint(string.format("\\hline&Total&\\textbf{%s}&%s&\\textbf{%s}&%s\\\\", group_digits(tc), pct(tc, tc), words(tw), wpct(tw)))
   tex.sprint("\\end{tabular}\\endgroup")
 end
 

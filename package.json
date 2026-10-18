@@ -2,7 +2,7 @@
   "name": "tex-authorship",
   "displayName": "TeX Authorship",
   "description": "iA Writer-like authorship tracking for LaTeX: mark pasted text as AI, reference or co-author with comment markers, see it tinted in the editor and coloured in a LuaLaTeX draft PDF.",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "publisher": "odv-hu",
   "license": "MIT",
   "repository": {
@@ -135,6 +135,11 @@
               }
             }
           }
+        },
+        "texAuthorship.ownerName": {
+          "type": "string",
+          "default": "Mine",
+          "description": "Name for your own (unmarked) text in the status bar and paste menu. An \\AuthorshipOwner{...} line in your .tex files takes precedence."
         },
         "texAuthorship.highlight": {
           "type": "boolean",

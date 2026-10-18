@@ -68,16 +68,44 @@ function disposeDecorations() {
   markerDecoration = undefined;
 }
 
-// ---------- colours from \AuthorshipColor ----------
+// ---------- \AuthorshipColor and \AuthorshipOwner from the files ----------
 
-/** \AuthorshipColor settings per .tex file (fsPath -> name -> rgb), kept current as files change. */
-/** @type {Map<string, Map<string, number[]>>} */
-const fileColors = new Map();
+/** @typedef {{colors: Map<string, number[]>, owner: string | null}} FileInfo */
+/** Settings found per .tex file (fsPath -> info), kept current as files change. */
+/** @type {Map<string, FileInfo>} */
+const fileInfo = new Map();
 
 /** @param {string} fsPath @param {string[]} lines */
-function rememberColors(fsPath, lines) {
-  const map = M.collectColors(lines);
-  if (map.size) fileColors.set(fsPath, map); else fileColors.delete(fsPath);
+function rememberFile(fsPath, lines) {
+  const colors = M.collectColors(lines);
+  const owner = M.findOwner(lines);
+  if (colors.size || owner) fileInfo.set(fsPath, { colors, owner }); else fileInfo.delete(fsPath);
+}
+
+/**
+ * Other .tex files whose settings apply to a document: those in the same folder or any folder
+ * above it (where a main file usually sits), nearest first.
+ * @param {vscode.TextDocument} doc @returns {FileInfo[]}
+ */
+function relatedFiles(doc) {
+  if (doc.uri.scheme !== 'file') return [];
+  const dir = path.dirname(doc.uri.fsPath);
+  return [...fileInfo]
+    .filter(([p]) => p !== doc.uri.fsPath)
+    .map(([p, info]) => ({ dir: path.dirname(p), info }))
+    .filter(f => dir === f.dir || dir.startsWith(f.dir + path.sep))
+    .sort((a, b) => b.dir.length - a.dir.length)
+    .map(f => f.info);
+}
+
+/** Name for your own text: \AuthorshipOwner in this file or a related one, then the setting. */
+function ownerFor(/** @type {vscode.TextDocument | undefined} */ doc) {
+  if (doc) {
+    const own = M.findOwner(docLines(doc));
+    if (own) return own;
+    for (const f of relatedFiles(doc)) if (f.owner) return f.owner;
+  }
+  return /** @type {string} */ (cfg().get('ownerName')) || 'Mine';
 }
 
 async function scanWorkspaceColors() {
@@ -86,7 +114,7 @@ async function scanWorkspaceColors() {
     for (const uri of uris) {
       try {
         const text = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
-        if (text.includes('\\AuthorshipColor')) rememberColors(uri.fsPath, text.split(/\r?\n/));
+        if (text.includes('\\Authorship')) rememberFile(uri.fsPath, text.split(/\r?\n/));
       } catch { /* unreadable file: skip */ }
     }
   } catch { /* no workspace */ }
@@ -99,15 +127,7 @@ async function scanWorkspaceColors() {
  * @param {vscode.TextDocument} doc @param {string[]} lines
  */
 function colorMapsFor(doc, lines) {
-  const maps = [M.collectColors(lines)];
-  if (doc.uri.scheme !== 'file') return maps;
-  const dir = path.dirname(doc.uri.fsPath);
-  const others = [...fileColors]
-    .filter(([p]) => p !== doc.uri.fsPath)
-    .map(([p, map]) => ({ dir: path.dirname(p), map }))
-    .filter(f => dir === f.dir || dir.startsWith(f.dir + path.sep))
-    .sort((a, b) => b.dir.length - a.dir.length);   // nearest folder first
-  return maps.concat(others.map(o => o.map));
+  return [M.collectColors(lines), ...relatedFiles(doc).map(f => f.colors)];
 }
 
 /** Hex colour for an author: \AuthorshipColor in the files, then settings, then the default. */
@@ -203,7 +223,7 @@ function updateStatus(editor) {
   const pct = (/** @type {number} */ n) => `${Math.round((100 * n) / total)}%`;
   const mine = counts.get('') || 0;
   parts.push(`$(edit) ${pct(mine)}`);
-  tip.push(`Mine: ${mine.toLocaleString()} characters (${pct(mine)})`);
+  tip.push(`${ownerFor(editor.document)}: ${mine.toLocaleString()} characters (${pct(mine)})`);
   for (const [key, n] of [...counts].filter(([k]) => k).sort((a, b) => b[1] - a[1])) {
     const a = authorFor(key);
     parts.push(`${KIND_ICON[a.kind]} ${pct(n)}`);
@@ -239,11 +259,11 @@ function authorChoices(/** @type {vscode.TextDocument | undefined} */ doc) {
   return list;
 }
 
-/** @param {Author[]} list @param {string} title @param {boolean} includeMine */
-async function pickAuthor(list, title, includeMine) {
+/** @param {Author[]} list @param {string} title @param {string | null} ownerName  null = don't offer plain */
+async function pickAuthor(list, title, ownerName) {
   /** @type {(vscode.QuickPickItem & {author?: Author})[]} */
   const items = [];
-  if (includeMine) items.push({ label: '$(edit) Mine', description: 'plain paste, no markers' });
+  if (ownerName) items.push({ label: `$(edit) ${ownerName}`, description: 'plain paste, no markers' });
   for (const a of list) items.push({ label: `${KIND_ICON[a.kind]} ${a.label}`, description: a.kind, author: a });
   const picked = await vscode.window.showQuickPick(items, { title, placeHolder: 'Who wrote this text?' });
   if (!picked) return undefined;
@@ -280,7 +300,7 @@ async function cmdPasteAs() {
   const doc = editor.document;
   const text = await vscode.env.clipboard.readText();
   if (!text) { vscode.window.showInformationMessage('Authorship: the clipboard has no text.'); return; }
-  const author = await pickAuthor(authorChoices(doc), 'Paste as…', true);
+  const author = await pickAuthor(authorChoices(doc), 'Paste as…', ownerFor(doc));
   if (author === undefined) return;
   if (author === null) {
     await editor.edit(eb => { for (const sel of editor.selections) eb.replace(sel, text); });
@@ -299,7 +319,7 @@ async function cmdMarkSelection() {
   const sel = editor.selection;
   if (sel.isEmpty) { vscode.window.showInformationMessage('Authorship: select the text to mark first.'); return; }
   if (verbatimGuard(doc, sel.start.line)) return;
-  const author = await pickAuthor(authorChoices(doc), 'Mark selection as…', false);
+  const author = await pickAuthor(authorChoices(doc), 'Mark selection as…', null);
   if (!author) return;
   const text = doc.getText(sel);
   await editor.edit(eb => eb.replace(sel, wrappedFor(doc, sel, text, author.key)));
@@ -327,7 +347,7 @@ async function cmdStats() {
   if (!total) { vscode.window.showInformationMessage('Authorship: no text to count.'); return; }
   const pct = (/** @type {number} */ n) => `${((100 * n) / total).toFixed(1)}%`;
   const rows = [...counts].sort((a, b) => b[1] - a[1])
-    .map(([k, n]) => `${k ? authorFor(k).label : 'Mine'}: ${pct(n)} (${n.toLocaleString()})`);
+    .map(([k, n]) => `${k ? authorFor(k).label : ownerFor(editor.document)}: ${pct(n)} (${n.toLocaleString()})`);
   vscode.window.showInformationMessage(`Authorship of ${path.basename(editor.document.fileName)} — ${rows.join(' · ')}`);
 }
 
@@ -376,7 +396,8 @@ const pasteProvider = {
     if (M.insideVerbatim(docLines(doc), range.start.line)) return;
 
     // Plain paste stays first, so nothing changes unless you pick another option.
-    const mine = new vscode.DocumentPasteEdit(text, 'Paste as mine', PASTE_KIND.append('mine'));
+    const owner = ownerFor(doc);
+    const mine = new vscode.DocumentPasteEdit(text, owner === 'Mine' ? 'Paste as mine' : `Paste as ${owner}`, PASTE_KIND.append('mine'));
     mine.yieldTo = [vscode.DocumentDropOrPasteEditKind.Text];
     const edits = [mine];
     for (const a of authorChoices(doc)) {
@@ -441,7 +462,7 @@ function activate(context) {
     vscode.window.onDidChangeVisibleTextEditors(() => scheduleRefresh()),
     vscode.workspace.onDidChangeTextDocument(e => {
       if (!isTex(e.document)) return;
-      if (e.document.uri.scheme === 'file') rememberColors(e.document.uri.fsPath, docLines(e.document));
+      if (e.document.uri.scheme === 'file') rememberFile(e.document.uri.fsPath, docLines(e.document));
       scheduleRefresh();
     }),
     vscode.workspace.onDidCloseTextDocument(doc => diagnostics.delete(doc.uri)),

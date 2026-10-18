@@ -256,6 +256,21 @@ function collectColors(lines) {
 }
 
 /**
+ * Name set with \AuthorshipOwner{...} for your own (unmarked) text, if any. Last active line wins.
+ * @param {string[]} lines
+ * @returns {string | null}
+ */
+function findOwner(lines) {
+  let owner = null;
+  for (const line of lines) {
+    if (!line.includes('\\AuthorshipOwner')) continue;
+    const m = /\\AuthorshipOwner\s*\{([^{}]*)\}/.exec(stripComment(line));
+    if (m && m[1].trim()) owner = m[1].trim();
+  }
+  return owner;
+}
+
+/**
  * Colour for an author from \AuthorshipColor settings, using the same order as the LaTeX package:
  * full key, then label, then kind.
  * @param {Map<string, number[]>} map @param {string} key
@@ -291,7 +306,7 @@ function formatColor(rgb, style) {
 }
 
 module.exports = {
-  findAuthorshipColors, collectColors, lookupColor, parseColor, formatColor, isHexColor,
+  findAuthorshipColors, collectColors, lookupColor, findOwner, parseColor, formatColor, isHexColor,
   MARKER_RE, PREFIX_KIND, KIND_PREFIX,
   parseMarkerLine, parseDocument, blockAt, wrapText, countByAuthor, insideVerbatim,
   authorKey, openTag, closeTag, stripComment,

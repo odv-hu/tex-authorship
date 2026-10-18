@@ -55,6 +55,14 @@ Package options:
 \AuthorshipColor{human}{0.2 0.3 0.9}           % …or by kind: ai, human, reference
 ```
 
+Your own text is called "Mine" by default. To use your name in the summary table, the status bar and the paste menu:
+
+```latex
+\AuthorshipOwner{Balázs Fürtön}
+```
+
+VS Code reads this line too (from the file itself or a `.tex` file in a folder above it). For files without it, the `texAuthorship.ownerName` setting is used.
+
 VS Code shows a colour swatch in front of each `\AuthorshipColor` value. Click it to open a colour picker; the value is rewritten in the same format (hex or decimal) it was written in.
 
 The editor tint follows these lines too, so the editor and the PDF match. Colours are looked up in the same order as in the PDF: exact author, then label, then kind. `\AuthorshipColor` lines in the current file come first, then those in `.tex` files in the same folder or any folder above it (so a colour set in `main.tex` also applies while you edit `chapters/intro.tex`). Only when none of these sets a colour does the `color` from the VS Code settings apply.
@@ -66,6 +74,7 @@ The editor tint follows these lines too, so the editor and the PDF match. Colour
 | Setting | Default | |
 |---|---|---|
 | `texAuthorship.authors` | AI: Claude, Reference | Authors offered in menus: `label`, `kind` (`ai`, `human`, `reference`), `color` |
+| `texAuthorship.ownerName` | `Mine` | Name for your own text when no `\AuthorshipOwner` line sets one |
 | `texAuthorship.highlight` | `true` | Tint marked passages (also: *Authorship: Toggle Highlighting*) |
 | `texAuthorship.backgroundOpacity` | `0.14` | Strength of the tint |
 | `texAuthorship.markerOpacity` | `0.4` | How faded the marker lines are |

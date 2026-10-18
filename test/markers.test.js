@@ -101,3 +101,8 @@ test('collectColors skips commented lines; lookupColor follows key > label > kin
   assert.deepEqual(M.lookupColor(map, '&AI: Claude'), [0, 0, 1], 'falls back to kind');
   assert.equal(M.lookupColor(map, '*Reference'), undefined);
 });
+
+test('findOwner reads the last active \\AuthorshipOwner', () => {
+  assert.equal(M.findOwner(['% \\AuthorshipOwner{Nope}', '\\AuthorshipOwner{Balázs Fürtön} % me']), 'Balázs Fürtön');
+  assert.equal(M.findOwner(['\\usepackage{authorship}']), null);
+});
