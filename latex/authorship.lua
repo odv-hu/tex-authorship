@@ -208,6 +208,33 @@ local function group_digits(n)
   return (out:gsub("^,", ""))
 end
 
+-- A small framed colour square for the summary table, like a legend key.
+-- Your own text gets solid black; AI text in gradient mode gets the gradient in bands.
+local SWATCH_BANDS = 9
+local function rgb_string(c) return string.format("%.3f %.3f %.3f", c[1], c[2], c[3]) end
+
+local function uses_gradient(a)
+  return gradient and a.kind == "ai" and not (colour_overrides[a.key] or colour_overrides[a.label])
+end
+
+local function swatch(key)
+  local bands = {}
+  if key == "Mine" then
+    bands[1] = "\\AuthorshipBand{1}{0 0 0}"
+  else
+    local a = author(key)
+    if uses_gradient(a) then
+      for i = 0, SWATCH_BANDS - 1 do
+        local c = gradient_colour(math.floor(i * GRADIENT_PERIOD / SWATCH_BANDS))
+        bands[#bands + 1] = string.format("\\AuthorshipBand{%.4f}{%s}", 1 / SWATCH_BANDS, rgb_string(c))
+      end
+    else
+      bands[1] = "\\AuthorshipBand{1}{" .. rgb_string(colour_of_author(a)) .. "}"
+    end
+  end
+  return "\\AuthorshipSwatchBox{" .. table.concat(bands) .. "}"
+end
+
 function M.typeset_summary()
   local prev = M.previous
   if not prev or prev == "" then
@@ -224,9 +251,10 @@ function M.typeset_summary()
     end
   end
   if total == 0 then return end
-  tex.sprint("\\begin{tabular}{@{}lrr@{}}")
+  tex.sprint("\\begin{tabular}{@{}l@{\\hspace{0.5em}}lrr@{}}")
   for _, r in ipairs(rows) do
     local label = r.key == "Mine" and "Mine" or r.key:sub(2)
+    tex.sprint(swatch(r.key) .. "&")
     tex.sprint(-2, label)
     tex.sprint(string.format("&%s&%.1f\\,\\%%\\\\", group_digits(r.n), 100 * r.n / total))
   end

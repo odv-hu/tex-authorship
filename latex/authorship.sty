@@ -66,6 +66,15 @@
 \renewcommand\AuthorshipSetSummary[1]{%
   \directlua{authorship.previous = "\luaescapestring{\detokenize{#1}}"}}
 \renewcommand\AuthorshipSummary{\directlua{authorship.typeset_summary()}}
+
+% Legend squares in the summary: a thin black frame around one or more colour bands.
+\newdimen\AuthorshipSwatchSize \AuthorshipSwatchSize=0.72em
+\newcommand\AuthorshipSwatchBox[1]{{%
+  \fboxsep=0pt \fboxrule=0.4pt \fbox{\hbox{#1}}}}
+\newcommand\AuthorshipBand[2]{%
+  \pdfextension colorstack 0 push {#2 rg #2 RG}%
+  \vrule width #1\AuthorshipSwatchSize height \AuthorshipSwatchSize depth 0pt
+  \pdfextension colorstack 0 pop\relax}
 \AddToHook{enddocument/afterlastpage}{\directlua{authorship.finish()}}
 
 \endinput

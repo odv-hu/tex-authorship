@@ -59,7 +59,7 @@ VS Code shows a colour swatch in front of each `\AuthorshipColor` value. Click i
 
 The editor tint follows these lines too, so the editor and the PDF match. Colours are looked up in the same order as in the PDF: exact author, then label, then kind. `\AuthorshipColor` lines in the current file come first, then those in `.tex` files in the same folder or any folder above it (so a colour set in `main.tex` also applies while you edit `chapters/intro.tex`). Only when none of these sets a colour does the `color` from the VS Code settings apply.
 
-`\AuthorshipSummary` prints a small table of characters per author, from the previous LuaLaTeX run. It's handy for an AI-use disclosure. The numbers count every glyph in the PDF, including headings, captions and the bibliography, so "Mine" is slightly generous.
+`\AuthorshipSummary` prints a small table of characters per author, from the previous LuaLaTeX run, with a colour square in front of each author as a legend. It's handy for an AI-use disclosure. The numbers count every glyph in the PDF, including headings, captions and the bibliography, so "Mine" is slightly generous.
 
 ## Settings
 
