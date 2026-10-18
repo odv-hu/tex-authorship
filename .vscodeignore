@@ -9,3 +9,5 @@ jsconfig.json
 package-lock.json
 *.vsix
 dist/**
+images/*.svg
+images/social-preview.png

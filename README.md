@@ -1,4 +1,9 @@
-# TeX Authorship
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/logo-dark.png">
+    <img alt="TeX Authorship" src="images/logo.png" width="480">
+  </picture>
+</p>
 
 iA Writer-style authorship for LaTeX in VS Code. Mark text you paste in as written by Claude, taken from a reference, or written by a co-author. Marked passages get a tinted background in the editor, and a coloured LuaLaTeX draft PDF shows the same split. Your own text stays plain.
 
