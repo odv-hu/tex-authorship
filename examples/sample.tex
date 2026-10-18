@@ -6,7 +6,7 @@
 \usepackage{lipsum}
 \usepackage{../latex/authorship} % the package from this repo; in your own projects just {authorship}. Try [gradient] or [hide]
 \AuthorshipOwner{Balázs Fürtön}
-\AuthorshipColor{AI: Claude}{0.94 0.13 0.56}   % per-author colour override
+\AuthorshipColor{AI: Claude}{0.94 0.31 0.13}   % per-author colour override
 \AuthorshipColor{AI: ChatGPT}{0.42 0.80 0.52}   % per-author colour override
 \pagestyle{fancy}
 \fancyhead[L]{Authorship sample}
@@ -56,7 +56,25 @@ before returning to Claude's own words to finish the paragraph.
 
 \subsection{A passage across a page break}
 
-\lipsum[1-3]
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Ut purus elit, vestibulum ut, placerat ac, adipiscing vitae, felis.
+%[&AI: Gemini]
+Curabitur dictum gravida mauris.
+%[/&AI: Gemini]
+%[@Balázs Nagy]
+Nam arcu libero, nonummy eget, consectetuer id, vulputate a, magna.
+Donec vehicula augue eu neque. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.
+Mauris ut leo.
+%[/@Balázs Nagy]
+Cras viverra metus rhoncus sem.
+Nulla et lectus vestibulum urna fringilla ultrices.
+Phasellus eu tellus sit amet tortor gravida placerat.
+Integer sapien est, iaculis in, pretium quis, viverra ac, nunc.
+Praesent eget sem vel leo ultrices bibendum.
+Aenean faucibus.
+Morbi dolor nulla, malesuada eu, pulvinar at, mollis ac, nulla.
+Curabitur auctor semper nulla. Donec varius orci eget risus.
+Duis nibh mi, congue eu, accumsan eleifend, sagittis quis, diam.
+Duis eget orci sit amet orci dignissim rutrum.
 
 %[&AI: Claude]
 \lipsum[4-7]
@@ -69,6 +87,7 @@ Don’t expect it to match your pdfLaTeX version page for page.
 %[&AI: ChatGPT]
 If page-for-page matching matters, for example when you’re discussing “page 7, second paragraph” with a co-author, build both versions with LuaLaTeX and switch colouring off with
 %[/&AI: ChatGPT]
+
 
 \subsection*{Authorship summary}
 \AuthorshipSummary
