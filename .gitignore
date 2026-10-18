@@ -147,3 +147,12 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# tex-authorship
+*.vsix
+examples/*.aux
+examples/*.log
+examples/*.pdf
+examples/*.fls
+examples/*.fdb_latexmk
+examples/*.synctex.gz

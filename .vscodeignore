@@ -1,0 +1,11 @@
+.vscode/**
+.github/**
+node_modules/**
+test/**
+examples/**/*.pdf
+examples/**/*.aux
+examples/**/*.log
+jsconfig.json
+package-lock.json
+*.vsix
+dist/**

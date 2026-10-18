@@ -1,0 +1,73 @@
+% !TEX program = lualatex
+
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\usepackage{fancyhdr}
+\usepackage{lipsum}
+\usepackage{authorship}         % try [gradient] or [hide]
+\AuthorshipColor{AI: Claude}{0.80 0.05 0.45}   % per-author colour override
+\AuthorshipColor{AI: ChatGPT}{1.00 1.00 0.45}   % per-author colour override
+\pagestyle{fancy}
+\fancyhead[L]{Authorship sample}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+% \AuthorshipColor{AI: Claude}{1.00 1.00 0.45}   % per-author colour override
+\section{Introduction}
+
+Thermal bridges account for a growing share of transmission losses as envelopes get better insulated.
+The linear thermal transmittance of a junction is
+%[&AI: Claude]
+dominated by the two-dimensional heat flux around the slab edge, where $\psi$ captures%
+%[/&AI: Claude]
+.
+This sentence is mine again, and the full stop above sits right after ``captures'' with no stray space.
+
+%[&AI: Claude]
+A whole paragraph pasted from Claude.
+It contains maths,
+\begin{equation}
+  U = \frac{1}{R_{si} + \sum_i d_i/\lambda_i + R_{se}}
+\end{equation}
+a footnote\footnote{Footnote text written inside the AI passage keeps its colour at the bottom of the page.} and an
+inline quotation from a standard:
+%[*Reference]
+``the linear thermal transmittance shall be determined by numerical calculation''
+%[/*Reference]
+before returning to Claude's own words to finish the paragraph.
+%[/&AI: Claude]
+
+\subsection{A table}
+
+\begin{tabular}{lr}
+  \hline
+  Junction & $\psi$ [W/mK] \\
+  \hline
+%[&AI: Claude]
+  Balcony slab & 0.45 \\
+  Window head  & 0.08 \\
+%[/&AI: Claude]
+  \hline
+\end{tabular}
+
+\subsection{A passage across a page break}
+
+\lipsum[1-3]
+
+%[&AI: Claude]
+\lipsum[4-7]
+%[/&AI: Claude]
+
+\lipsum[8]
+
+%[&AI: Claude]
+What this means for you: treat the coloured PDF as a reading draft. Don’t expect it to match your pdfLaTeX version page for page. If page-for-page matching matters, for example when you’re discussing “page 7, second paragraph” with a co-author, build both versions with LuaLaTeX and switch colouring off with
+%[/&AI: Claude]
+
+What this means for you: treat the coloured PDF as a reading draft. Don’t expect it to match your pdfLaTeX version page for page. If page-for-page matching matters, for example when you’re discussing “page 7, second paragraph” with a co-author, build both versions with LuaLaTeX and switch colouring off with
+
+\subsection*{Authorship summary}
+\AuthorshipSummary
+
+\end{document}

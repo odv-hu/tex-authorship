@@ -1,0 +1,187 @@
+{
+  "name": "tex-authorship",
+  "displayName": "TeX Authorship",
+  "description": "iA Writer-like authorship tracking for LaTeX: mark pasted text as AI, reference or co-author with comment markers, see it tinted in the editor and coloured in a LuaLaTeX draft PDF.",
+  "version": "0.1.0",
+  "publisher": "odv-hu",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/odv-hu/tex-authorship.git"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "latex",
+    "authorship",
+    "ai",
+    "ia writer",
+    "provenance"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:latex",
+    "onLanguage:tex"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "texAuthorship.pasteAs",
+        "title": "Paste as…",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.markSelection",
+        "title": "Mark Selection as…",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.unmark",
+        "title": "Unmark Passage (make it mine)",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.showStats",
+        "title": "Show Authorship Statistics",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.toggleHighlight",
+        "title": "Toggle Highlighting",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.copyLatexPackage",
+        "title": "Copy LaTeX Package into This Project",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.buildDraft",
+        "title": "Build Coloured Draft (LuaLaTeX)",
+        "category": "Authorship"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "texAuthorship.pasteAs",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "9_cutcopypaste@10"
+        },
+        {
+          "command": "texAuthorship.markSelection",
+          "when": "editorHasSelection && (resourceLangId == latex || resourceLangId == tex)",
+          "group": "9_cutcopypaste@11"
+        },
+        {
+          "command": "texAuthorship.unmark",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "9_cutcopypaste@12"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "texAuthorship.pasteAs",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "editorTextFocus && (resourceLangId == latex || resourceLangId == tex)"
+      }
+    ],
+    "configuration": {
+      "title": "TeX Authorship",
+      "properties": {
+        "texAuthorship.authors": {
+          "type": "array",
+          "description": "Authors offered when pasting or marking. kind: ai (& prefix), human (@ prefix) or reference (* prefix). Text outside markers is always yours.",
+          "default": [
+            {
+              "label": "AI: Claude",
+              "kind": "ai",
+              "color": "#e0218a"
+            },
+            {
+              "label": "Reference",
+              "kind": "reference",
+              "color": "#8a8a8a"
+            }
+          ],
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "kind"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Name shown in menus and written into the marker, e.g. \"AI: Claude\" -> %[&AI: Claude]"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "ai",
+                  "human",
+                  "reference"
+                ]
+              },
+              "color": {
+                "type": "string",
+                "description": "Hex colour, e.g. #e0218a"
+              }
+            }
+          }
+        },
+        "texAuthorship.highlight": {
+          "type": "boolean",
+          "default": true,
+          "description": "Tint marked passages in the editor."
+        },
+        "texAuthorship.backgroundOpacity": {
+          "type": "number",
+          "default": 0.14,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Opacity of the line tint behind marked passages."
+        },
+        "texAuthorship.markerOpacity": {
+          "type": "number",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Opacity of the marker comment lines themselves."
+        },
+        "texAuthorship.languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "latex",
+            "tex"
+          ],
+          "description": "Language IDs the extension works in (reload the window after changing)."
+        },
+        "texAuthorship.draftRecipe": {
+          "type": "string",
+          "default": "latexmk (lualatex)",
+          "description": "LaTeX Workshop recipe used by \"Build Coloured Draft\"."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "tsc -p jsconfig.json",
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "1.100.0",
+    "typescript": "^5.6.0"
+  }
+}
