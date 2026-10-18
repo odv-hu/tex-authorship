@@ -1,0 +1,4 @@
+# Use the package from ../latex instead of keeping copies in this folder,
+# so the example always builds with the current version.
+ensure_path('TEXINPUTS', '../latex//');
+ensure_path('LUAINPUTS', '../latex//');
