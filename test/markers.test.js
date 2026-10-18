@@ -70,3 +70,34 @@ test('insideVerbatim', () => {
   assert.equal(M.insideVerbatim(lines, 4), false);
   assert.equal(M.insideVerbatim(lines, 0), false);
 });
+
+test('findAuthorshipColors: decimal and hex', () => {
+  const line = '\\AuthorshipColor{AI: Claude}{0.80 0.05 0.45}   % per-author colour override';
+  const [c] = M.findAuthorshipColors(line);
+  assert.equal(line.slice(c.start, c.end), '0.80 0.05 0.45');
+  assert.deepEqual(c.rgb, [0.8, 0.05, 0.45]);
+  const hexLine = '\\AuthorshipColor{AI: ChatGPT}{ #7a3cff }';
+  const [h] = M.findAuthorshipColors(hexLine);
+  assert.equal(hexLine.slice(h.start, h.end), '#7a3cff');
+  assert.equal(Math.round(h.rgb[0] * 255), 0x7a);
+  assert.equal(M.findAuthorshipColors('\\AuthorshipColor{x}{2 3 4}').length, 0, 'out of range');
+  assert.equal(M.findAuthorshipColors('% \\AuthorshipColor{a}{0 0 0} \\AuthorshipColor{b}{1,1,1}').length, 2);
+});
+
+test('formatColor keeps the style', () => {
+  assert.equal(M.formatColor([0.8, 0.05, 0.45], 'decimal'), '0.80 0.05 0.45');
+  assert.equal(M.formatColor([122 / 255, 60 / 255, 1], 'hex'), '#7a3cff');
+});
+
+test('collectColors skips commented lines; lookupColor follows key > label > kind', () => {
+  const lines = [
+    '% \\AuthorshipColor{AI: Claude}{1 1 0}',
+    '\\AuthorshipColor{ai}{0 0 1}',
+    '\\AuthorshipColor{AI: ChatGPT}{#ff0000}   % note',
+  ];
+  const map = M.collectColors(lines);
+  assert.equal(map.has('AI: Claude'), false);
+  assert.deepEqual(M.lookupColor(map, '&AI: ChatGPT'), [1, 0, 0]);
+  assert.deepEqual(M.lookupColor(map, '&AI: Claude'), [0, 0, 1], 'falls back to kind');
+  assert.equal(M.lookupColor(map, '*Reference'), undefined);
+});

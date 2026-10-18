@@ -220,7 +220,78 @@ function insideVerbatim(lines, line) {
   return open !== null;
 }
 
+/**
+ * Find colour values in \AuthorshipColor{<who>}{<colour>} on one line.
+ * The colour is either three numbers 0–1 ("0.80 0.05 0.45", commas allowed) or hex ("#cc0d73").
+ * @param {string} line
+ * @returns {{name: string, start: number, end: number, rgb: number[]}[]}  start/end delimit the colour text
+ */
+function findAuthorshipColors(line) {
+  const re = /\\AuthorshipColor\s*\{([^{}]*)\}\s*\{\s*([^{}]*?)\s*\}/dg;
+  const out = [];
+  let m;
+  while ((m = re.exec(line))) {
+    const rgb = parseColor(m[2]);
+    const span = m.indices && m.indices[2];
+    if (rgb && span) out.push({ name: m[1].trim(), start: span[0], end: span[1], rgb });
+  }
+  return out;
+}
+
+/**
+ * Active (not commented-out) \AuthorshipColor settings in a file: name -> rgb.
+ * The name is whatever the first argument says: a full key ("&AI: Claude"), a label ("AI: Claude")
+ * or a kind ("ai", "human", "reference"). Later lines win, as in LaTeX.
+ * @param {string[]} lines
+ * @returns {Map<string, number[]>}
+ */
+function collectColors(lines) {
+  /** @type {Map<string, number[]>} */
+  const map = new Map();
+  for (const line of lines) {
+    if (!line.includes('\\AuthorshipColor')) continue;
+    for (const c of findAuthorshipColors(stripComment(line))) map.set(c.name, c.rgb);
+  }
+  return map;
+}
+
+/**
+ * Colour for an author from \AuthorshipColor settings, using the same order as the LaTeX package:
+ * full key, then label, then kind.
+ * @param {Map<string, number[]>} map @param {string} key
+ * @returns {number[] | undefined}
+ */
+function lookupColor(map, key) {
+  const mk = parseMarkerLine(openTag(key));
+  if (!mk) return map.get(key);
+  return map.get(key) || map.get(mk.label) || map.get(mk.kind);
+}
+
+/** @param {string} text */
+function isHexColor(text) { return /^#?[0-9a-f]{6}$/i.test(text.trim()); }
+
+/** @param {string} text @returns {number[] | null} */
+function parseColor(text) {
+  const t = text.trim();
+  if (isHexColor(t)) {
+    const h = t.replace('#', '');
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  }
+  const m = /^([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)$/.exec(t);
+  if (!m) return null;
+  const rgb = [m[1], m[2], m[3]].map(Number);
+  return rgb.every(v => v >= 0 && v <= 1) ? rgb : null;
+}
+
+/** @param {number[]} rgb @param {'hex'|'decimal'} style */
+function formatColor(rgb, style) {
+  const c = rgb.map(v => Math.min(1, Math.max(0, v)));
+  if (style === 'hex') return '#' + c.map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+  return c.map(v => v.toFixed(2)).join(' ');
+}
+
 module.exports = {
+  findAuthorshipColors, collectColors, lookupColor, parseColor, formatColor, isHexColor,
   MARKER_RE, PREFIX_KIND, KIND_PREFIX,
   parseMarkerLine, parseDocument, blockAt, wrapText, countByAuthor, insideVerbatim,
   authorKey, openTag, closeTag, stripComment,

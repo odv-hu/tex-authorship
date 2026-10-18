@@ -237,9 +237,17 @@ end
 -- setup
 
 function M.set_color(name, rgb)
+  -- hex: "#cc0d73" (TeX hands # over doubled, so strip every #)
+  local hex = rgb:gsub("#", ""):match("^%s*(%x%x%x%x%x%x)%s*$")
+  if hex then
+    colour_overrides[name] = {
+      tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255,
+    }
+    return
+  end
   local r, g, b = rgb:match("^%s*([%d.]+)[%s,]+([%d.]+)[%s,]+([%d.]+)%s*$")
   if not r then
-    warn("\\AuthorshipColor{" .. name .. "}: expected three numbers between 0 and 1, got '" .. rgb .. "'")
+    warn("\\AuthorshipColor{" .. name .. "}: expected a hex colour (#cc0d73) or three numbers between 0 and 1, got '" .. rgb .. "'")
     return
   end
   colour_overrides[name] = { tonumber(r), tonumber(g), tonumber(b) }

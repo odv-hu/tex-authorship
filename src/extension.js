@@ -68,19 +68,70 @@ function disposeDecorations() {
   markerDecoration = undefined;
 }
 
-function decorationFor(/** @type {string} */ key) {
-  let d = authorDecorations.get(key);
+// ---------- colours from \AuthorshipColor ----------
+
+/** \AuthorshipColor settings per .tex file (fsPath -> name -> rgb), kept current as files change. */
+/** @type {Map<string, Map<string, number[]>>} */
+const fileColors = new Map();
+
+/** @param {string} fsPath @param {string[]} lines */
+function rememberColors(fsPath, lines) {
+  const map = M.collectColors(lines);
+  if (map.size) fileColors.set(fsPath, map); else fileColors.delete(fsPath);
+}
+
+async function scanWorkspaceColors() {
+  try {
+    const uris = await vscode.workspace.findFiles('**/*.tex', '**/node_modules/**', 1000);
+    for (const uri of uris) {
+      try {
+        const text = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
+        if (text.includes('\\AuthorshipColor')) rememberColors(uri.fsPath, text.split(/\r?\n/));
+      } catch { /* unreadable file: skip */ }
+    }
+  } catch { /* no workspace */ }
+  scheduleRefresh();
+}
+
+/**
+ * Colour sources for a document, most specific first: the document itself, then .tex files
+ * in the same folder or any folder above it (where a main file usually sits).
+ * @param {vscode.TextDocument} doc @param {string[]} lines
+ */
+function colorMapsFor(doc, lines) {
+  const maps = [M.collectColors(lines)];
+  if (doc.uri.scheme !== 'file') return maps;
+  const dir = path.dirname(doc.uri.fsPath);
+  const others = [...fileColors]
+    .filter(([p]) => p !== doc.uri.fsPath)
+    .map(([p, map]) => ({ dir: path.dirname(p), map }))
+    .filter(f => dir === f.dir || dir.startsWith(f.dir + path.sep))
+    .sort((a, b) => b.dir.length - a.dir.length);   // nearest folder first
+  return maps.concat(others.map(o => o.map));
+}
+
+/** Hex colour for an author: \AuthorshipColor in the files, then settings, then the default. */
+function resolveColor(/** @type {string} */ key, /** @type {Map<string, number[]>[]} */ maps) {
+  for (const map of maps) {
+    const rgb = M.lookupColor(map, key);
+    if (rgb) return M.formatColor(rgb, 'hex');
+  }
+  return authorFor(key).color;
+}
+
+function decorationFor(/** @type {string} */ key, /** @type {string} */ color) {
+  const id = `${key}|${color}`;
+  let d = authorDecorations.get(id);
   if (!d) {
-    const a = authorFor(key);
     const alpha = /** @type {number} */ (cfg().get('backgroundOpacity')) ?? 0.14;
     d = vscode.window.createTextEditorDecorationType({
       isWholeLine: true,
-      backgroundColor: tint(a.color, alpha),
-      overviewRulerColor: tint(a.color, 0.8),
+      backgroundColor: tint(color, alpha),
+      overviewRulerColor: tint(color, 0.8),
       overviewRulerLane: vscode.OverviewRulerLane.Left,
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     });
-    authorDecorations.set(key, d);
+    authorDecorations.set(id, d);
   }
   return d;
 }
@@ -102,12 +153,13 @@ function docLines(doc) {
   return lines;
 }
 
-/** @param {vscode.TextEditor} editor */
-function decorate(editor) {
+/** @param {vscode.TextEditor} editor @param {Set<vscode.TextEditorDecorationType>} used */
+function decorate(editor, used) {
   const doc = editor.document;
   const enabled = cfg().get('highlight') !== false;
   const lines = docLines(doc);
   const parsed = M.parseDocument(lines);
+  const maps = colorMapsFor(doc, lines);
 
   /** @type {Map<string, vscode.Range[]>} */
   const byAuthor = new Map();
@@ -120,8 +172,16 @@ function decorate(editor) {
     if (!byAuthor.has(key)) byAuthor.set(key, []);
     /** @type {vscode.Range[]} */ (byAuthor.get(key)).push(new vscode.Range(i, 0, i, 0));
   }
-  for (const [key, d] of authorDecorations) if (!byAuthor.has(key) || !enabled) editor.setDecorations(d, []);
-  if (enabled) for (const [key, ranges] of byAuthor) editor.setDecorations(decorationFor(key), ranges);
+  /** @type {Map<vscode.TextEditorDecorationType, vscode.Range[]>} */
+  const wanted = new Map();
+  if (enabled) {
+    for (const [key, ranges] of byAuthor) {
+      const d = decorationFor(key, resolveColor(key, maps));
+      wanted.set(d, ranges);
+      used.add(d);
+    }
+  }
+  for (const d of authorDecorations.values()) editor.setDecorations(d, wanted.get(d) || []);
   editor.setDecorations(getMarkerDecoration(), enabled ? markerRanges : []);
 
   diagnostics.set(doc.uri, parsed.problems.map(p => {
@@ -155,7 +215,11 @@ function updateStatus(editor) {
 }
 
 function refreshAll() {
-  for (const ed of vscode.window.visibleTextEditors) if (isTex(ed.document)) decorate(ed);
+  /** @type {Set<vscode.TextEditorDecorationType>} */
+  const used = new Set();
+  for (const ed of vscode.window.visibleTextEditors) if (isTex(ed.document)) decorate(ed, used);
+  // drop tints for colours nobody uses any more (e.g. after picking a new colour)
+  for (const [id, d] of authorDecorations) if (!used.has(d)) { d.dispose(); authorDecorations.delete(id); }
   updateStatus(vscode.window.activeTextEditor);
 }
 
@@ -325,6 +389,30 @@ const pasteProvider = {
   },
 };
 
+// ---------- colour picker for \AuthorshipColor ----------
+
+/** Pure parsing lives in markers.js; this only adapts it to VS Code. */
+/** @type {vscode.DocumentColorProvider} */
+const colorProvider = {
+  provideDocumentColors(doc) {
+    /** @type {vscode.ColorInformation[]} */
+    const out = [];
+    for (let i = 0; i < doc.lineCount; i++) {
+      for (const c of M.findAuthorshipColors(doc.lineAt(i).text)) {
+        out.push(new vscode.ColorInformation(
+          new vscode.Range(i, c.start, i, c.end),
+          new vscode.Color(c.rgb[0], c.rgb[1], c.rgb[2], 1)));
+      }
+    }
+    return out;
+  },
+  provideColorPresentations(color, context) {
+    const original = context.document.getText(context.range);
+    const rgb = [color.red, color.green, color.blue];
+    return [new vscode.ColorPresentation(M.formatColor(rgb, M.isHexColor(original) ? 'hex' : 'decimal'))];
+  },
+};
+
 // ---------- lifecycle ----------
 
 /** @param {vscode.ExtensionContext} context */
@@ -341,6 +429,7 @@ function activate(context) {
       providedPasteEditKinds: [PASTE_KIND],
       pasteMimeTypes: ['text/plain'],
     }),
+    vscode.languages.registerColorProvider(selector, colorProvider),
     vscode.commands.registerCommand('texAuthorship.pasteAs', cmdPasteAs),
     vscode.commands.registerCommand('texAuthorship.markSelection', cmdMarkSelection),
     vscode.commands.registerCommand('texAuthorship.unmark', cmdUnmark),
@@ -350,7 +439,11 @@ function activate(context) {
     vscode.commands.registerCommand('texAuthorship.buildDraft', cmdBuildDraft),
     vscode.window.onDidChangeActiveTextEditor(() => scheduleRefresh()),
     vscode.window.onDidChangeVisibleTextEditors(() => scheduleRefresh()),
-    vscode.workspace.onDidChangeTextDocument(e => { if (isTex(e.document)) scheduleRefresh(); }),
+    vscode.workspace.onDidChangeTextDocument(e => {
+      if (!isTex(e.document)) return;
+      if (e.document.uri.scheme === 'file') rememberColors(e.document.uri.fsPath, docLines(e.document));
+      scheduleRefresh();
+    }),
     vscode.workspace.onDidCloseTextDocument(doc => diagnostics.delete(doc.uri)),
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('texAuthorship')) { disposeDecorations(); refreshAll(); }
@@ -358,6 +451,7 @@ function activate(context) {
     { dispose: disposeDecorations },
   );
   refreshAll();
+  scanWorkspaceColors();
 }
 
 function deactivate() {}

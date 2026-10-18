@@ -6,14 +6,13 @@
 \usepackage{lipsum}
 \usepackage{authorship}         % try [gradient] or [hide]
 \AuthorshipColor{AI: Claude}{0.80 0.05 0.45}   % per-author colour override
-\AuthorshipColor{AI: ChatGPT}{1.00 1.00 0.45}   % per-author colour override
+\AuthorshipColor{AI: ChatGPT}{0.45 1.00 0.60}   % per-author colour override
 \pagestyle{fancy}
 \fancyhead[L]{Authorship sample}
 \fancyfoot[C]{\thepage}
 
 \begin{document}
 
-% \AuthorshipColor{AI: Claude}{1.00 1.00 0.45}   % per-author colour override
 \section{Introduction}
 
 Thermal bridges account for a growing share of transmission losses as envelopes get better insulated.
@@ -61,11 +60,11 @@ before returning to Claude's own words to finish the paragraph.
 
 \lipsum[8]
 
-%[&AI: Claude]
-What this means for you: treat the coloured PDF as a reading draft. Don’t expect it to match your pdfLaTeX version page for page. If page-for-page matching matters, for example when you’re discussing “page 7, second paragraph” with a co-author, build both versions with LuaLaTeX and switch colouring off with
-%[/&AI: Claude]
-
-What this means for you: treat the coloured PDF as a reading draft. Don’t expect it to match your pdfLaTeX version page for page. If page-for-page matching matters, for example when you’re discussing “page 7, second paragraph” with a co-author, build both versions with LuaLaTeX and switch colouring off with
+What this means for you: treat the coloured PDF as a reading draft.
+Don’t expect it to match your pdfLaTeX version page for page.
+%[&AI: ChatGPT]
+If page-for-page matching matters, for example when you’re discussing “page 7, second paragraph” with a co-author, build both versions with LuaLaTeX and switch colouring off with
+%[/&AI: ChatGPT]
 
 \subsection*{Authorship summary}
 \AuthorshipSummary

@@ -51,8 +51,13 @@ Package options:
 \usepackage[gradient]{authorship}  % AI text in a magenta → orange → violet gradient
 \usepackage[hide]{authorship}      % switch colouring off without removing markers
 \AuthorshipColor{AI: Claude}{0.10 0.55 0.45}   % RGB 0–1, by label…
+\AuthorshipColor{AI: ChatGPT}{#7a3cff}         % …or hex, same as in the VS Code settings
 \AuthorshipColor{human}{0.2 0.3 0.9}           % …or by kind: ai, human, reference
 ```
+
+VS Code shows a colour swatch in front of each `\AuthorshipColor` value. Click it to open a colour picker; the value is rewritten in the same format (hex or decimal) it was written in.
+
+The editor tint follows these lines too, so the editor and the PDF match. Colours are looked up in the same order as in the PDF: exact author, then label, then kind. `\AuthorshipColor` lines in the current file come first, then those in `.tex` files in the same folder or any folder above it (so a colour set in `main.tex` also applies while you edit `chapters/intro.tex`). Only when none of these sets a colour does the `color` from the VS Code settings apply.
 
 `\AuthorshipSummary` prints a small table of characters per author, from the previous LuaLaTeX run. It's handy for an AI-use disclosure. The numbers count every glyph in the PDF, including headings, captions and the bibliography, so "Mine" is slightly generous.
 
