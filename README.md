@@ -126,8 +126,8 @@ Adding a co-author:
 
 ## How it works and its limits
 
-- **Marking is per passage, not per character.** Edits you make inside a Claude passage stay attributed to Claude until you unmark it.
-Treat a marked passage as "Claude-originated, possibly edited by me".
+- **Marking is per passage, not per character.** Edits you make inside an AI (e.g. Claude) passage stay attributed to that AI until you unmark it.
+Treat a marked passage as "AI-originated, possibly edited by me".
 - Markers sit on their own lines. Where a line break would add a space TeX didn't have before, the extension ends the line with `%`, so the PDF reads exactly as if you had pasted inline.
 - Markers can't go inside `verbatim`, `lstlisting`, `minted` and similar environments, where `%` isn't a comment.
 The extension refuses to put them there.
