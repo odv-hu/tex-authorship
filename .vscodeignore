@@ -11,3 +11,4 @@ package-lock.json
 dist/**
 images/*.svg
 images/social-preview.png
+docs/**

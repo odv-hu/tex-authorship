@@ -136,6 +136,21 @@ The extension refuses to put them there.
 Footnotes and floats keep their colour wherever they land. Running heads and page numbers stay black.
 - Text coloured explicitly (`\textcolor`) inside a marked passage keeps its own colour.
 
+## Related tools
+
+Nothing else we know of combines LaTeX in VS Code, marking at paste time and a coloured PDF, but several tools cover part of it:
+
+- [iA Writer](https://ia.net/writer/support/editor/authorship) is the original: authorship for Markdown, stored as character ranges at the end of the file ([Markdown Annotations](https://github.com/iainc/Markdown-Annotations)).
+- [Authorship for Obsidian](https://www.obsidianstats.com/plugins/authorship) brings iA's format to Obsidian, with typed, pasted and AI text highlighted in Markdown notes.
+- [AI Co-Authoring Tracker](https://marketplace.visualstudio.com/items?itemName=CodeMaman.ai-coauthoring-tracker) classifies each character in VS Code as typed, AI or pasted by timing heuristics and reports it in commit messages; aimed at code.
+- [DifAI](https://marketplace.visualstudio.com/items?itemName=Ph03n1x.difai), [Provenance Code History](https://marketplace.visualstudio.com/items?itemName=lucastaylr.code-provenance) and [Code Measure](https://marketplace.visualstudio.com/items?itemName=AIvsHumanCodeMeasure.code-measure) track AI-generated code in VS Code.
+- [git-ai](https://usegitai.com/docs/cli/how-git-ai-works) has coding agents record the lines they write, stored in git notes.
+- The [changes](https://ctan.org/pkg/changes) LaTeX package colours text per author with commands like `\added[id=BF]{…}`, for revisions between co-authors.
+- [aidisclose.org](https://aidisclose.org/) writes an AI-use disclosure statement in LaTeX; it pairs well with `\AuthorshipSummary`.
+
+How TeX Authorship differs:
+it works on LaTeX, keeps the record as comment lines inside the file (so formatters, undo, git and other editors can't misplace it), asks you at paste time instead of guessing from typing speed, and carries the same colours into the PDF with a per-author summary.
+
 ## Development
 
 ```sh
@@ -146,3 +161,5 @@ npm run package     # build the .vsix
 ```
 
 Open the folder in VS Code and press F5 to try it in a development window with `examples/sample.tex`.
+
+Design decisions are recorded in [`docs/adr/`](docs/adr/), and likely next features in [`docs/roadmap.md`](docs/roadmap.md).
