@@ -156,6 +156,6 @@ examples/*.pdf
 examples/*.fls
 examples/*.fdb_latexmk
 examples/*.synctex.gz
-# copies made by "Copy LaTeX Package into This Project"; examples/latexmkrc uses ../latex instead
+# copies made by "Copy LaTeX Package into This Project"; the example loads ../latex/authorship instead
 examples/authorship.sty
 examples/authorship.lua

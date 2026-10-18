@@ -41,9 +41,19 @@
 \fi
 
 \newattribute\authorship@attr
+% Load the Lua half from the same folder as this file when possible (so a package loaded
+% as \usepackage{../latex/authorship} still finds it), otherwise wherever TeX finds it.
+% (No Lua comments or tildes inside \directlua: the code becomes one line, and ~ is active.)
 \directlua{
-  authorship = require("authorship")
-  authorship.init(\the\allocationnumber, \ifauthorship@gradient true\else false\fi)
+  local here = "\luaescapestring{\CurrentFilePath}"
+  local path = here .. "/authorship.lua"
+  if here == "" or not lfs.isfile(path) then path = kpse.find_file("authorship.lua", "lua") end
+  if not path then
+    tex.error("Package authorship Error: authorship.lua not found; put it next to authorship.sty")
+  else
+    authorship = dofile(path)
+    authorship.init(\the\allocationnumber, \ifauthorship@gradient true\else false\fi)
+  end
 }
 
 % The Lua side rewrites each marker line into one of these as TeX reads the file.
