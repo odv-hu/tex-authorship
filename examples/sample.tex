@@ -4,9 +4,19 @@
 \usepackage{amsmath}
 \usepackage{fancyhdr}
 \usepackage{lipsum}
-\usepackage{../latex/authorship} % the package from this repo; in your own projects just {authorship}. Try [gradient] or [hide]
+% --- Loading the package -------------------------------------------------------
+% This example loads the package straight from the repo's latex/ folder.
+% In your own papers the VS Code extension installs it for you, so write just:
+%     \usepackage{authorship}
+% For papers compiled elsewhere (Overleaf co-authors, journal submission systems),
+% use this guarded form instead, so the paper still compiles without the package
+% (the markers then stay plain comments):
+%     \IfFileExists{authorship.sty}{\usepackage{authorship}}{%
+%       \providecommand\AuthorshipOwner[1]{}\providecommand\AuthorshipColor[2]{}%
+%       \providecommand\AuthorshipSummary{}}
+\usepackage{../latex/authorship}                  % Options: [gradient] for a gradient on AI text, [hide] to switch colouring off.
 \AuthorshipOwner{Balázs Fürtön}
-\AuthorshipColor{AI: Claude}{0.94 0.31 0.13}   % per-author colour override
+\AuthorshipColor{AI: Claude}{0.94 0.31 0.13}    % per-author colour override
 \AuthorshipColor{AI: ChatGPT}{0.42 0.80 0.52}   % per-author colour override
 \pagestyle{fancy}
 \fancyhead[L]{Authorship sample}
@@ -60,11 +70,10 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Ut purus elit, vestibu
 %[&AI: Gemini]
 Curabitur dictum gravida mauris.
 %[/&AI: Gemini]
-%[@Balázs Nagy]
+
 Nam arcu libero, nonummy eget, consectetuer id, vulputate a, magna.
 Donec vehicula augue eu neque. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.
 Mauris ut leo.
-%[/@Balázs Nagy]
 Cras viverra metus rhoncus sem.
 Nulla et lectus vestibulum urna fringilla ultrices.
 Phasellus eu tellus sit amet tortor gravida placerat.

@@ -159,3 +159,6 @@ examples/*.synctex.gz
 # copies made by "Copy LaTeX Package into This Project"; the example loads ../latex/authorship instead
 examples/authorship.sty
 examples/authorship.lua
+
+# macOS
+.DS_Store
