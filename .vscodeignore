@@ -2,9 +2,8 @@
 .github/**
 node_modules/**
 test/**
-examples/**/*.pdf
-examples/**/*.aux
-examples/**/*.log
+examples/**
+!examples/sample.tex
 jsconfig.json
 package-lock.json
 *.vsix
@@ -12,3 +11,6 @@ dist/**
 images/*.svg
 images/social-preview.png
 docs/**
+.gitignore
+.DS_Store
+**/.DS_Store
