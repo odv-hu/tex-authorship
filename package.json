@@ -2,7 +2,7 @@
   "name": "tex-authorship",
   "displayName": "TeX Authorship",
   "description": "Authorship tracking for LaTeX: mark pasted text as AI, reference or co-author with comment markers, see it tinted in the editor and coloured in a LuaLaTeX draft PDF. Inspired by iA Writer's Authorship.",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "publisher": "odv-hu",
   "license": "MIT",
   "repository": {
