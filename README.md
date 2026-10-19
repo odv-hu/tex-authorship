@@ -7,10 +7,11 @@
 
 ```The tool is built for our own writing, it is maintained as we need it.```
 
-iA Writer-style authorship for LaTeX in VS Code.
+Authorship tracking for LaTeX in VS Code.
 Mark text you paste in as written by your AI assistant (Claude, ChatGPT, Gemini, etc.), taken from a reference, or written by a co-author.
 Marked passages get a tinted background in the editor, and a coloured LuaLaTeX draft PDF shows the same split.
 Your own text stays plain.
+Inspired by iA Writer's Authorship feature; an independent project, not affiliated with iA.
 
 The record is a pair of comment lines around each passage, so it travels with the file:
 formatters, undo, git and other editors all keep it intact, and LaTeX ignores it.
