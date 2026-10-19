@@ -12,3 +12,4 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0005](0005-pdf-colouring-in-luatex.md) | Colour the PDF in LuaLaTeX at shipout; do nothing under pdfLaTeX | Accepted |
 | [0006](0006-counts-from-the-pdf.md) | Count characters and words from the typeset PDF | Accepted |
 | [0007](0007-plain-javascript.md) | Plain JavaScript extension, no build step | Accepted |
+| [0008](0008-install-package-in-texmfhome.md) | Install the LaTeX package into TEXMFHOME; keep the format backward compatible | Accepted |

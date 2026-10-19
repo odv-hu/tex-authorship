@@ -4,6 +4,7 @@
 const vscode = require('vscode');
 const path = require('path');
 const M = require('./markers');
+const T = require('./texinstall');
 
 /** @typedef {{label: string, kind: import('./markers').AuthorKind, color: string, key: string}} Author */
 
@@ -371,6 +372,33 @@ async function cmdCopyPackage(context) {
   vscode.window.showInformationMessage(`Authorship: copied authorship.sty and authorship.lua to ${dir.fsPath}. Add \\usepackage{authorship} to your preamble.`);
 }
 
+/**
+ * Install or update the bundled LaTeX package in the user's TeX folder (TEXMFHOME).
+ * @param {vscode.ExtensionContext} context @param {boolean} explicit  run from the command palette
+ */
+async function installLatexPackage(context, explicit) {
+  try {
+    const { dir: home, source } = await T.findTexmfHome();
+    const target = T.packageDir(home);
+    const sourceDir = vscode.Uri.joinPath(context.extensionUri, 'latex').fsPath;
+    const { changed } = T.syncFiles(sourceDir, target);
+    const version = T.packageVersion(path.join(target, 'authorship.sty'));
+    const wasInstalled = context.globalState.get('latexPackageInstalled');
+    await context.globalState.update('latexPackageInstalled', target);
+    if (changed.length || explicit) {
+      const what = !changed.length ? 'is up to date' : wasInstalled ? 'was updated' : 'was installed';
+      const where = source === 'default' ? `${target} (TeX's default location; kpsewhich was not found)` : target;
+      vscode.window.showInformationMessage(
+        `TeX Authorship: the LaTeX package ${version ? `(${version}) ` : ''}${what} in ${where}. ` +
+        '\\usepackage{authorship} now works in every document; a copy next to a document still takes precedence.');
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (explicit) vscode.window.showWarningMessage(`TeX Authorship: could not install the LaTeX package (${msg}). Use "Copy LaTeX Package into This Project" instead.`);
+    else console.warn('TeX Authorship: LaTeX package install failed:', msg);
+  }
+}
+
 async function cmdBuildDraft() {
   const recipe = cfg().get('draftRecipe') || 'latexmk (lualatex)';
   try {
@@ -457,6 +485,7 @@ function activate(context) {
     vscode.commands.registerCommand('texAuthorship.showStats', cmdStats),
     vscode.commands.registerCommand('texAuthorship.toggleHighlight', cmdToggle),
     vscode.commands.registerCommand('texAuthorship.copyLatexPackage', () => cmdCopyPackage(context)),
+    vscode.commands.registerCommand('texAuthorship.installLatexPackage', () => installLatexPackage(context, true)),
     vscode.commands.registerCommand('texAuthorship.buildDraft', cmdBuildDraft),
     vscode.window.onDidChangeActiveTextEditor(() => scheduleRefresh()),
     vscode.window.onDidChangeVisibleTextEditors(() => scheduleRefresh()),
@@ -473,6 +502,7 @@ function activate(context) {
   );
   refreshAll();
   scanWorkspaceColors();
+  if (cfg().get('installLatexPackage') !== false) installLatexPackage(context, false);
 }
 
 function deactivate() {}

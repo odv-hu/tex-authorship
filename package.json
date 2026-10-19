@@ -2,7 +2,7 @@
   "name": "tex-authorship",
   "displayName": "TeX Authorship",
   "description": "iA Writer-like authorship tracking for LaTeX: mark pasted text as AI, reference or co-author with comment markers, see it tinted in the editor and coloured in a LuaLaTeX draft PDF.",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "odv-hu",
   "license": "MIT",
   "repository": {
@@ -57,7 +57,12 @@
       },
       {
         "command": "texAuthorship.copyLatexPackage",
-        "title": "Copy LaTeX Package into This Project",
+        "title": "Copy LaTeX Package into This Project (for sharing or submission)",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.installLatexPackage",
+        "title": "Install LaTeX Package for All Documents",
         "category": "Authorship"
       },
       {
@@ -141,6 +146,11 @@
           "type": "string",
           "default": "Mine",
           "description": "Name for your own (unmarked) text in the status bar and paste menu. An \\AuthorshipOwner{...} line in your .tex files takes precedence."
+        },
+        "texAuthorship.installLatexPackage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep the LaTeX package (authorship.sty + authorship.lua) installed and up to date in your personal TeX folder (TEXMFHOME), so \\usepackage{authorship} works in every document without copies."
         },
         "texAuthorship.highlight": {
           "type": "boolean",

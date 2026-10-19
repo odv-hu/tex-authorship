@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+```The tool is built for our own writing, it is maintained as we need it.```
+
 iA Writer-style authorship for LaTeX in VS Code.
 Mark text you paste in as written by your AI assistant (Claude, ChatGPT, Gemini, etc.), taken from a reference, or written by a co-author.
 Marked passages get a tinted background in the editor, and a coloured LuaLaTeX draft PDF shows the same split.
@@ -32,21 +34,30 @@ The prefixes follow iA Writer's [Markdown Annotations](https://github.com/iainc/
 
 ## Install
 
-**VS Code extension.** 
+**VS Code extension.**
+Search "TeX Authorship" in VS Code's Extensions panel (it is a pre-release, so choose *Install Pre-Release Version* if asked).
+Or download `tex-authorship-<version>.vsix` from Releases and run *Extensions: Install from VSIX…* from the Command Palette.
+Needs VS Code 1.100 or newer.
 
-1. Download `tex-authorship-<version>.vsix` (from Releases, or build it with `npm run package`).
-2. Then in VS Code: Command Palette → *Extensions: Install from VSIX…*. Needs VS Code 1.100 or newer.
-
-**LaTeX package.** 
-
-1. Open a `.tex` file and run *Authorship: Copy LaTeX Package into This Project*. That puts `authorship.sty` and `authorship.lua` next to your file.
-2. Then add to the preamble:
+**LaTeX package.**
+The extension installs it for you: on startup it puts `authorship.sty` and `authorship.lua` in your personal TeX folder (`~/Library/texmf/tex/latex/authorship/` on macOS, `~/texmf/…` on Linux) and keeps them up to date when the extension updates.
+Every document on your computer can then just say:
 
 ```latex
 \usepackage{authorship}            % coloured under LuaLaTeX, does nothing under pdfLaTeX
 ```
 
-To use it in every project instead, copy both files from `latex/` to `~/Library/texmf/tex/latex/authorship/` (macOS) or `~/texmf/tex/latex/authorship/` (Linux).
+A copy of the two files next to a document takes precedence over the installed one, which is how to freeze a version for one paper.
+To install by hand, copy both files from `latex/` into that folder.
+
+**Shared papers and submissions.**
+Co-authors on Overleaf and journal systems compile without your TeX folder.
+Run *Authorship: Copy LaTeX Package into This Project* to include the two files with the paper, or guard the line so the paper compiles without them (the markers stay comments):
+
+```latex
+\IfFileExists{authorship.sty}{\usepackage{authorship}}{%
+  \providecommand\AuthorshipOwner[1]{}\providecommand\AuthorshipColor[2]{}\providecommand\AuthorshipSummary{}}
+```
 
 ## Use
 
@@ -112,6 +123,7 @@ The summary table itself is left out.
 | `texAuthorship.highlight` | `true` | Tint marked passages (also: *Authorship: Toggle Highlighting*) |
 | `texAuthorship.backgroundOpacity` | `0.14` | Strength of the tint |
 | `texAuthorship.markerOpacity` | `0.4` | How faded the marker lines are |
+| `texAuthorship.installLatexPackage` | `true` | Keep the LaTeX package installed and up to date in your personal TeX folder (also: *Authorship: Install LaTeX Package for All Documents*) |
 | `texAuthorship.draftRecipe` | `latexmk (lualatex)` | LaTeX Workshop recipe for the coloured draft |
 
 Adding a co-author:
