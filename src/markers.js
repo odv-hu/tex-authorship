@@ -221,25 +221,46 @@ function insideVerbatim(lines, line) {
 }
 
 /**
- * Find colour values in \AuthorshipColor{<who>}{<colour>} on one line.
- * The colour is either three numbers 0–1 ("0.80 0.05 0.45", commas allowed) or hex ("#cc0d73").
+ * Find colour values on one line, in \AuthorshipColor{<who>}{<colour>} and in every stop of
+ * \AuthorshipGradient{<who>}{<colour>, <colour>, ...}.
+ * A colour is either three numbers 0–1 ("0.80 0.05 0.45", commas allowed) or hex ("#cc0d73").
+ * Gradient stops are separated by commas, or by semicolons when the numbers themselves use commas.
  * @param {string} line
- * @returns {{name: string, start: number, end: number, rgb: number[]}[]}  start/end delimit the colour text
+ * @returns {{name: string, start: number, end: number, rgb: number[], stop: number}[]}
+ *   start/end delimit the colour text; stop is -1 for \AuthorshipColor, else the stop's index
  */
 function findAuthorshipColors(line) {
-  const re = /\\AuthorshipColor\s*\{([^{}]*)\}\s*\{\s*([^{}]*?)\s*\}/dg;
+  /** @type {{name: string, start: number, end: number, rgb: number[], stop: number}[]} */
   const out = [];
+  const re = /\\Authorship(Color|Gradient)\s*\{([^{}]*)\}\s*\{([^{}]*)\}/dg;
+  /** @type {RegExpExecArray | null} */
   let m;
   while ((m = re.exec(line))) {
-    const rgb = parseColor(m[2]);
-    const span = m.indices && m.indices[2];
-    if (rgb && span) out.push({ name: m[1].trim(), start: span[0], end: span[1], rgb });
+    const match = m;
+    const name = match[2].trim();
+    const arg = match[3];
+    const base = match.indices && match.indices[3] ? match.indices[3][0] : -1;
+    if (base < 0) continue;
+    const isColor = match[1] === 'Color';
+    const pieces = isColor ? [arg] : arg.split(arg.includes(';') ? ';' : ',');
+    let offset = 0;
+    pieces.forEach((piece, i) => {
+      const lead = piece.length - piece.trimStart().length;
+      const text = piece.trim();
+      const rgb = text ? parseColor(text) : null;
+      if (rgb) {
+        const start = base + offset + lead;
+        out.push({ name, start, end: start + text.length, rgb, stop: isColor ? -1 : i });
+      }
+      offset += piece.length + 1;
+    });
   }
   return out;
 }
 
 /**
- * Active (not commented-out) \AuthorshipColor settings in a file: name -> rgb.
+ * Active (not commented-out) \AuthorshipColor / \AuthorshipGradient settings in a file: name -> rgb
+ * (a gradient counts with its first colour).
  * The name is whatever the first argument says: a full key ("&AI: Claude"), a label ("AI: Claude")
  * or a kind ("ai", "human", "reference"). Later lines win, as in LaTeX.
  * @param {string[]} lines
@@ -249,8 +270,9 @@ function collectColors(lines) {
   /** @type {Map<string, number[]>} */
   const map = new Map();
   for (const line of lines) {
-    if (!line.includes('\\AuthorshipColor')) continue;
-    for (const c of findAuthorshipColors(stripComment(line))) map.set(c.name, c.rgb);
+    if (!line.includes('\\AuthorshipColor') && !line.includes('\\AuthorshipGradient')) continue;
+    // a gradient tints the editor with its first stop
+    for (const c of findAuthorshipColors(stripComment(line))) if (c.stop <= 0) map.set(c.name, c.rgb);
   }
   return map;
 }

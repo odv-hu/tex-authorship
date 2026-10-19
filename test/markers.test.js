@@ -106,3 +106,21 @@ test('findOwner reads the last active \\AuthorshipOwner', () => {
   assert.equal(M.findOwner(['% \\AuthorshipOwner{Nope}', '\\AuthorshipOwner{Balázs Fürtön} % me']), 'Balázs Fürtön');
   assert.equal(M.findOwner(['\\usepackage{authorship}']), null);
 });
+
+test('findAuthorshipColors reads every gradient stop with its own position', () => {
+  const line = '\\AuthorshipGradient{AI: ChatGPT}{#2ecc71, #00b3b3,#2f6fdd}';
+  const c = M.findAuthorshipColors(line);
+  assert.deepEqual(c.map(x => line.slice(x.start, x.end)), ['#2ecc71', '#00b3b3', '#2f6fdd']);
+  assert.deepEqual(c.map(x => x.stop), [0, 1, 2]);
+  const dec = '\\AuthorshipGradient{AI: Gemini}{0.9 0.2 0.5; 0.2,0.3,0.9}';
+  const d = M.findAuthorshipColors(dec);
+  assert.deepEqual(d.map(x => dec.slice(x.start, x.end)), ['0.9 0.2 0.5', '0.2,0.3,0.9']);
+});
+
+test('collectColors uses a gradient\'s first stop, and the last line wins', () => {
+  const map = M.collectColors([
+    '\\AuthorshipColor{AI: ChatGPT}{#ff0000}',
+    '\\AuthorshipGradient{AI: ChatGPT}{#00ff00, #0000ff}',
+  ]);
+  assert.deepEqual(M.lookupColor(map, '&AI: ChatGPT'), [0, 1, 0]);
+});

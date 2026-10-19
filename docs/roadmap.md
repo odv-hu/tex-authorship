@@ -5,10 +5,6 @@ Nothing here is decided; when something is, it gets an [ADR](adr/README.md).
 
 ## Next
 
-### Per-author gradients
-`\AuthorshipGradient{AI: ChatGPT}{#2ecc71, #00b3b3, #2f6fdd}` so each AI can have its own gradient instead of the one shared by `[gradient]`.
-The editor tint would use the first colour; the summary legend would show that author's bands.
-
 ### Localised summary labels
 Configurable column titles and "Total" (e.g. Szerző, Karakterek, Szavak, Összesen), for documents not written in English.
 

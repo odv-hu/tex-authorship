@@ -29,7 +29,9 @@ local gradient_stops = {
 local GRADIENT_PERIOD = 240   -- glyphs per full cycle
 local GRADIENT_STEP   = 3     -- glyphs that share one colour step
 
-local colour_overrides = {}   -- label / key / kind -> {r,g,b}
+-- \AuthorshipColor / \AuthorshipGradient settings: label / key / kind ->
+--   { solid = {r,g,b} }  or  { stops = { {r,g,b}, {r,g,b}, ... } }   (the last command for a name wins)
+local overrides = {}
 local authors = {}            -- key -> {key, kind, label, count}
 local author_order = {}
 local instances = {}          -- attribute value -> {author, n}
@@ -62,20 +64,31 @@ local function author(key)
   return a
 end
 
-local function colour_of_author(a)
-  return colour_overrides[a.key] or colour_overrides[a.label] or colour_overrides[a.kind]
-      or kind_colour[a.kind]
+-- How an author is drawn: an override for its key, label or kind (most specific first),
+-- else the package-wide [gradient] option for AI authors, else the default colour of its kind.
+local function style_of(a)
+  local o = overrides[a.key] or overrides[a.label]
+  if o then return o end
+  local k = overrides[a.kind]
+  if gradient and a.kind == "ai" then
+    -- as in earlier versions, [gradient] wins over a kind-wide solid colour;
+    -- a kind-wide \AuthorshipGradient{ai}{...} replaces the default stops
+    if k and k.stops then return k end
+    return { stops = gradient_stops }
+  end
+  return k or { solid = kind_colour[a.kind] }
 end
 
 local function lerp(c1, c2, t)
   return { c1[1] + (c2[1] - c1[1]) * t, c1[2] + (c2[2] - c1[2]) * t, c1[3] + (c2[3] - c1[3]) * t }
 end
 
-local function gradient_colour(i)
-  local n = #gradient_stops
+-- Colour i glyphs into a gradient that runs through the stops and back to the first.
+local function gradient_colour(i, stops)
+  local n = #stops
   local pos = ((i % GRADIENT_PERIOD) / GRADIENT_PERIOD) * n
   local k = math.floor(pos)
-  return lerp(gradient_stops[k + 1], gradient_stops[(k + 1) % n + 1], pos - k)
+  return lerp(stops[k + 1], stops[(k + 1) % n + 1], pos - k)
 end
 
 local function pdf_colour(c)
@@ -186,12 +199,13 @@ local function colour_for(n)
   end
   local a = inst.author
   if n.id == GLYPH then count_glyph(n, a.key) end
-  if gradient and a.kind == "ai" and not (colour_overrides[a.key] or colour_overrides[a.label]) then
+  local style = style_of(a)
+  if style.stops then
     local step = math.floor(inst.n / GRADIENT_STEP)
     inst.n = inst.n + 1
-    return id .. ":" .. step, gradient_colour(step * GRADIENT_STEP)
+    return id .. ":" .. step, gradient_colour(step * GRADIENT_STEP, style.stops)
   end
-  return a.key, colour_of_author(a)
+  return a.key, style.solid
 end
 
 local function process(head)
@@ -264,23 +278,19 @@ end
 local SWATCH_BANDS = 9
 local function rgb_string(c) return string.format("%.3f %.3f %.3f", c[1], c[2], c[3]) end
 
-local function uses_gradient(a)
-  return gradient and a.kind == "ai" and not (colour_overrides[a.key] or colour_overrides[a.label])
-end
-
 local function swatch(key)
   local bands = {}
   if key == "Mine" then
     bands[1] = "\\AuthorshipBand{1}{0 0 0}"
   else
-    local a = author(key)
-    if uses_gradient(a) then
+    local style = style_of(author(key))
+    if style.stops then
       for i = 0, SWATCH_BANDS - 1 do
-        local c = gradient_colour(math.floor(i * GRADIENT_PERIOD / SWATCH_BANDS))
+        local c = gradient_colour(math.floor(i * GRADIENT_PERIOD / SWATCH_BANDS), style.stops)
         bands[#bands + 1] = string.format("\\AuthorshipBand{%.4f}{%s}", 1 / SWATCH_BANDS, rgb_string(c))
       end
     else
-      bands[1] = "\\AuthorshipBand{1}{" .. rgb_string(colour_of_author(a)) .. "}"
+      bands[1] = "\\AuthorshipBand{1}{" .. rgb_string(style.solid) .. "}"
     end
   end
   return "\\AuthorshipSwatchBox{" .. table.concat(bands) .. "}"
@@ -330,21 +340,46 @@ end
 ----------------------------------------------------------------------
 -- setup
 
-function M.set_color(name, rgb)
-  -- hex: "#cc0d73" (TeX hands # over doubled, so strip every #)
-  local hex = rgb:gsub("#", ""):match("^%s*(%x%x%x%x%x%x)%s*$")
+-- One colour: hex ("#cc0d73"; TeX hands # over doubled, so every # is stripped) or three numbers 0-1.
+local function parse_colour(text)
+  local hex = text:gsub("#", ""):match("^%s*(%x%x%x%x%x%x)%s*$")
   if hex then
-    colour_overrides[name] = {
-      tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255,
-    }
+    return { tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255 }
+  end
+  local r, g, b = text:match("^%s*([%d.]+)[%s,]+([%d.]+)[%s,]+([%d.]+)%s*$")
+  if r then return { tonumber(r), tonumber(g), tonumber(b) } end
+  return nil
+end
+
+function M.set_color(name, rgb)
+  local c = parse_colour(rgb)
+  if not c then
+    warn("\\AuthorshipColor{" .. name .. "}: expected a hex colour (#cc0d73) or three numbers between 0 and 1, got '" .. rgb:gsub("##", "#") .. "'")
     return
   end
-  local r, g, b = rgb:match("^%s*([%d.]+)[%s,]+([%d.]+)[%s,]+([%d.]+)%s*$")
-  if not r then
-    warn("\\AuthorshipColor{" .. name .. "}: expected a hex colour (#cc0d73) or three numbers between 0 and 1, got '" .. rgb .. "'")
+  overrides[name] = { solid = c }
+end
+
+-- \AuthorshipGradient{name}{stop, stop, ...}: two or more colours, separated by commas,
+-- or by semicolons when the colours are written as numbers with commas in them.
+function M.set_gradient(name, list)
+  local sep = list:find(";") and ";" or ","
+  local stops = {}
+  for part in (list .. sep):gmatch("(.-)" .. sep) do
+    if part:match("%S") then
+      local c = parse_colour(part)
+      if not c then
+        warn("\\AuthorshipGradient{" .. name .. "}: could not read the colour '" .. part:gsub("##", "#") .. "'")
+        return
+      end
+      stops[#stops + 1] = c
+    end
+  end
+  if #stops < 2 then
+    warn("\\AuthorshipGradient{" .. name .. "}: needs at least two colours")
     return
   end
-  colour_overrides[name] = { tonumber(r), tonumber(g), tonumber(b) }
+  overrides[name] = { stops = stops }
 end
 
 function M.init(attribute_number, use_gradient)

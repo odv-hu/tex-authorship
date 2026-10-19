@@ -13,11 +13,12 @@
 % (the markers then stay plain comments):
 %     \IfFileExists{authorship.sty}{\usepackage{authorship}}{%
 %       \providecommand\AuthorshipOwner[1]{}\providecommand\AuthorshipColor[2]{}%
-%       \providecommand\AuthorshipSummary{}}
+%       \providecommand\AuthorshipGradient[2]{}\providecommand\AuthorshipSummary{}}
 \usepackage{../latex/authorship}                  % Options: [gradient] for a gradient on AI text, [hide] to switch colouring off.
 \AuthorshipOwner{Balázs Fürtön}
 \AuthorshipColor{AI: Claude}{0.94 0.31 0.13}    % per-author colour override
 \AuthorshipColor{AI: ChatGPT}{0.42 0.80 0.52}   % per-author colour override
+\AuthorshipGradient{AI: Gemini}{#e6157f, #f5a623, #2f6fdd}   % per-author gradient
 \pagestyle{fancy}
 \fancyhead[L]{Authorship sample}
 \fancyfoot[C]{\thepage}

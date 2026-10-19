@@ -13,7 +13,7 @@
 %%
 %% MIT licence, https://github.com/odv-hu/tex-authorship
 \NeedsTeXFormat{LaTeX2e}[2020/10/01]
-\ProvidesPackage{authorship}[2026/10/19 v0.1.9 Colour text by author from comment markers]
+\ProvidesPackage{authorship}[2026/10/19 v0.1.11 Colour text by author from comment markers]
 
 \newif\ifauthorship@show     \authorship@showtrue
 \newif\ifauthorship@gradient \authorship@gradientfalse
@@ -27,6 +27,7 @@
 \providecommand\AuthorshipSetSummary[1]{}
 \providecommand\AuthorshipSummary{}
 \providecommand\AuthorshipColor[2]{}
+\providecommand\AuthorshipGradient[2]{}
 % Name for your own (unmarked) text in the summary: \AuthorshipOwner{Balázs Fürtön}
 \newcommand\AuthorshipOwnerName{Mine}
 \newcommand\AuthorshipOwner[1]{\gdef\AuthorshipOwnerName{#1}}
@@ -66,6 +67,11 @@
 % Colours are RGB triples between 0 and 1.
 \renewcommand\AuthorshipColor[2]{%
   \directlua{authorship.set_color("\luaescapestring{\detokenize{#1}}", "\luaescapestring{#2}")}}
+
+% \AuthorshipGradient{AI: ChatGPT}{#2ecc71, #00b3b3, #2f6fdd}: this author's text runs through
+% the colours (two or more; hex or "r g b" numbers; separate with ; if the numbers use commas).
+\renewcommand\AuthorshipGradient[2]{%
+  \directlua{authorship.set_gradient("\luaescapestring{\detokenize{#1}}", "\luaescapestring{\detokenize{#2}}")}}
 
 % Running heads and page numbers are built in the output routine: keep them black
 % even when a page breaks in the middle of a marked passage.

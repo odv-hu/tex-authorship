@@ -57,7 +57,8 @@ Run *Authorship: Copy LaTeX Package into This Project* to include the two files 
 
 ```latex
 \IfFileExists{authorship.sty}{\usepackage{authorship}}{%
-  \providecommand\AuthorshipOwner[1]{}\providecommand\AuthorshipColor[2]{}\providecommand\AuthorshipSummary{}}
+  \providecommand\AuthorshipOwner[1]{}\providecommand\AuthorshipColor[2]{}%
+  \providecommand\AuthorshipGradient[2]{}\providecommand\AuthorshipSummary{}}
 ```
 
 ## Use
@@ -87,6 +88,8 @@ Package options:
 \AuthorshipColor{AI: Claude}{0.10 0.55 0.45}    % RGB 0–1, by label…
 \AuthorshipColor{AI: ChatGPT}{#7a3cff}          % …or hex, same as in the VS Code settings
 \AuthorshipColor{human}{0.2 0.3 0.9}            % …or by kind: ai, human, reference
+\AuthorshipGradient{AI: Gemini}{#e6157f, #2f6fdd}            % a gradient for one author: two or more colours
+\AuthorshipGradient{AI: ChatGPT}{0.18 0.80 0.44; 0 0.7 0.7}  % numbers work too; separate with ; then
 ```
 
 Your own text is called "Mine" by default.
@@ -99,7 +102,9 @@ To use your name in the summary table, the status bar and the paste menu:
 VS Code reads this line too (from the file itself or a `.tex` file in a folder above it).
 For files without it, the `texAuthorship.ownerName` setting is used.
 
-VS Code shows a colour swatch in front of each `\AuthorshipColor` value.
+`[gradient]` gives every AI author the default magenta → orange → violet gradient; `\AuthorshipGradient` gives one author its own. For each author, the last `\AuthorshipColor` or `\AuthorshipGradient` line wins.
+
+VS Code shows a colour swatch in front of each `\AuthorshipColor` value and each `\AuthorshipGradient` stop.
 Click it to open a colour picker; the value is rewritten in the same format (hex or decimal) it was written in.
 
 The editor tint follows these lines too, so the editor and the PDF match.
