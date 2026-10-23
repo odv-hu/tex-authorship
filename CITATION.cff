@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use TeX Authorship, we appreciate if you cite it.:)"
+type: software
+title: "TeX Authorship: authorship tracking for LaTeX in VS Code"
+abstract: >-
+  A VS Code extension and LuaLaTeX package that mark passages of a LaTeX
+  document which was written by a co-author, an AI assistant or taken from a reference.
+  The syntax is a simple pair of comment lines around each passage.
+  This way it travels with the source through formatters, undo and git.
+  Marked passages are tinted in the editor and coloured in a draft PDF.
+authors:
+  - family-names: "Fürtön"
+    given-names: "Balázs"
+    orcid: "https://orcid.org/0000-0002-0073-6208"
+license: MIT
+repository-code: "https://github.com/odv-hu/tex-authorship"
+keywords:
+  - LaTeX
+  - authorship
+  - provenance
+  - generative AI
+  - disclosure
+  - VS Code
