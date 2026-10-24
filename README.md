@@ -111,8 +111,8 @@ Choose the reviewer: the document owner is offered first, followed by configured
 human co-authors. Reviewed means read and accepted, with at most minor edits;
 Revised means edited but still based on the AI text. Both retain AI attribution.
 
-Current reviews soften the AI tint and add a bar in the reviewer's colour. The
-editor shows the status and name beside the opening marker and on hover. In the
+Current reviews soften the AI tint. The editor shows the status and reviewer name
+beside the opening marker and on hover, without borders around text lines. In the
 PDF, a single bar means Reviewed and a double bar means Revised; the authorship
 summary includes a reviewer legend. `\AuthorshipReviewLegend` prints the legend
 on its own. Bars mark affected lines, including lines shared with other text;

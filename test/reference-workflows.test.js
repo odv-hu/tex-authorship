@@ -7,7 +7,7 @@ const path = require('node:path');
 const M = require('../src/markers');
 
 function harness(text, source = 'smith2024') {
-  const edits = [], warnings = [];
+  const edits = [], warnings = [], decorations = [];
   class Position { constructor(line,character) { this.line=line;this.character=character; } }
   class Range { constructor(a,b,c,d) { if (typeof a === 'number') {this.start=new Position(a,b);this.end=new Position(c,d);} else {this.start=a;this.end=b;} } }
   const lines = text.split('\n');
@@ -17,13 +17,13 @@ function harness(text, source = 'smith2024') {
   const selection = new Range(0,0,0,lines[0].length);selection.isEmpty=false;selection.active=new Position(0,0);
   const editor = {document:doc,selection,selections:[selection],edit:async fn=>{fn({replace:(range,text)=>edits.push({range,text}),insert:(position,text)=>edits.push({position,text}),delete:range=>edits.push({range,deleted:true})});return true;}};
   const kind = {append:()=>kind};
-  const vscode = {Position,Range,EndOfLine:{CRLF:2},DocumentDropOrPasteEditKind:{Empty:kind},
+  const vscode = {Position,Range,EndOfLine:{CRLF:2},DocumentDropOrPasteEditKind:{Empty:kind},OverviewRulerLane:{Left:1},DecorationRangeBehavior:{ClosedClosed:1},
     env:{clipboard:{readText:async()=> 'Pasted text.'}},
     workspace:{getConfiguration:()=>({get:key=>key==='authors'?[{label:'Custom reference',kind:'reference',color:'#888888'}]:undefined})},
-    window:{activeTextEditor:editor,showQuickPick:async items=>items.find(i=>i.author?.kind==='reference') || items.find(i=>i.key?.startsWith('@')),showWarningMessage:msg=>warnings.push(msg),showInformationMessage:msg=>warnings.push(msg)}};
+    window:{createTextEditorDecorationType:options=>{decorations.push(options);return options;},activeTextEditor:editor,showQuickPick:async items=>items.find(i=>i.author?.kind==='reference') || items.find(i=>i.key?.startsWith('@')),showWarningMessage:msg=>warnings.push(msg),showInformationMessage:msg=>warnings.push(msg)}};
   const context={module:{exports:{}},require:name=>name==='vscode'?vscode:name==='./references'?{pickSource:async()=> typeof source === 'function'?source(doc):source}:require(name.startsWith('.')?path.resolve(__dirname,'../src',name):name),console,Buffer,setTimeout,clearTimeout};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark,cmdReview};',context);
-  return {...context.module.exports,edits,warnings,editor,doc};
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark,cmdReview,decorationFor};',context);
+  return {...context.module.exports,edits,warnings,editor,doc,decorations};
 }
 
 test('reference marking and explicit paste include metadata in one edit, no citation',async()=>{
@@ -107,4 +107,18 @@ test('review commands default to owner, preserve AI markers and can remove revie
     const unmark=harness(reviewed);await unmark.cmdUnmark();assert.deepEqual(unmark.edits.map(e=>e.range.start.line),[3,1,0]);
   }
   const ref=harness('%[*Reference]\nText\n%[/*Reference]');await ref.cmdReview('reviewed');assert.equal(ref.edits.length,0);
+});
+
+
+test('authorship decorations never add borders, including unreviewed and stale passages',()=>{
+  const h=harness('Text');
+  const base={version:1,status:'reviewed',by:'Owner',color:'#000000',hash:'a'.repeat(64)};
+  for(const review of [undefined,{review:base,stale:false},{review:{...base,status:'revised'},stale:false},{review:base,stale:true}]) h.decorationFor('&AI: ChatGPT','#aa00aa',review);
+  assert.equal(h.decorations.length,4);
+  for(const d of h.decorations) {
+    assert.ok(!Object.keys(d).some(k=>k.startsWith('border')));
+    assert.ok(d.backgroundColor);
+  }
+  assert.equal(h.decorations[0].backgroundColor,h.decorations[3].backgroundColor);
+  assert.notEqual(h.decorations[0].backgroundColor,h.decorations[1].backgroundColor);
 });

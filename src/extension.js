@@ -150,9 +150,6 @@ function decorationFor(/** @type {string} */ key, /** @type {string} */ color, /
     d = vscode.window.createTextEditorDecorationType({
       isWholeLine: true,
       backgroundColor: tint(color, review && !review.stale ? alpha * 0.4 : alpha),
-      borderWidth: review ? '0 0 0 3px' : undefined,
-      borderStyle: review?.stale ? 'dashed' : 'solid',
-      borderColor: review?.review.color === '#000000' ? new vscode.ThemeColor('editor.foreground') : review?.review.color,
       overviewRulerColor: tint(color, 0.8),
       overviewRulerLane: vscode.OverviewRulerLane.Left,
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
