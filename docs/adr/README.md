@@ -16,3 +16,4 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0009](0009-opt-in-citation-emphasis.md) | Opt-in bold red citations in coloured drafts | Accepted |
 | [0010](0010-configurable-citation-colour.md) | Citation colour command and editor picker, default red | Accepted |
 | [0011](0011-normal-release-channel.md) | Use normal GitHub and Marketplace release channels by default | Accepted |
+| [0012](0012-bibliography-linked-reference-passages.md) | Link reference passages to bibliography entries without inserting citations | Proposed |
