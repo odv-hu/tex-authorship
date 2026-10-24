@@ -13,3 +13,5 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0006](0006-counts-from-the-pdf.md) | Count characters and words from the typeset PDF | Accepted |
 | [0007](0007-plain-javascript.md) | Plain JavaScript extension, no build step | Accepted |
 | [0008](0008-install-package-in-texmfhome.md) | Install the LaTeX package into TEXMFHOME; keep the format backward compatible | Accepted |
+| [0009](0009-opt-in-citation-emphasis.md) | Opt-in bold red citations in coloured drafts | Accepted |
+| [0010](0010-configurable-citation-colour.md) | Citation colour command and editor picker, default red | Accepted |

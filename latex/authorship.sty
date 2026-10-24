@@ -17,6 +17,8 @@
 
 \newif\ifauthorship@show     \authorship@showtrue
 \newif\ifauthorship@gradient \authorship@gradientfalse
+\newif\ifauthorship@citations \authorship@citationsfalse
+\DeclareOption{citations}{\authorship@citationstrue}
 \DeclareOption{show}{\authorship@showtrue}
 \DeclareOption{hide}{\authorship@showfalse}
 \DeclareOption{gradient}{\authorship@gradienttrue}
@@ -28,6 +30,7 @@
 \providecommand\AuthorshipSummary{}
 \providecommand\AuthorshipColor[2]{}
 \providecommand\AuthorshipGradient[2]{}
+\providecommand\AuthorshipCitationColor[1]{}
 % Name for your own (unmarked) text in the summary: \AuthorshipOwner{Balázs Fürtön}
 \newcommand\AuthorshipOwnerName{Mine}
 \newcommand\AuthorshipOwner[1]{\gdef\AuthorshipOwnerName{#1}}
@@ -56,6 +59,33 @@
     authorship.init(\the\allocationnumber, \ifauthorship@gradient true\else false\fi)
   end
 }
+
+
+% Citation colour accepts the same hex/RGB syntax as author colours.
+\renewcommand\AuthorshipCitationColor[1]{%
+  \directlua{authorship.set_citation_color("\luaescapestring{\detokenize{#1}}")}}
+
+% Optional citation emphasis; keep attribution/counting separate from visual priority.
+\ifauthorship@citations
+  \newattribute\authorship@citationattr
+  \directlua{authorship.citation_attr = \the\allocationnumber}
+  \def\authorship@citationstyle{\authorship@citationattr=1\relax\bfseries}
+  \AddToHook{begindocument/end}{%
+    \let\authorship@originalcitex\@citex
+    \@ifpackageloaded{natbib}{%
+      % Natbib opens its own group before dispatch and closes it in \@cite.
+      \def\@citex[#1][#2]#3{%
+        \authorship@citationstyle\authorship@originalcitex[#1][#2]{#3}}%
+    }{%
+      \@ifpackageloaded{biblatex}{%
+        \PackageWarning{authorship}{Option citations does not support biblatex}%
+      }{%
+        \def\@citex[#1]#2{%
+          \begingroup\authorship@citationstyle
+          \authorship@originalcitex[#1]{#2}\endgroup}%
+      }%
+    }}
+\fi
 
 % The Lua side rewrites each marker line into one of these as TeX reads the file.
 % They are expandable on purpose: inside tables TeX looks ahead for \hline and

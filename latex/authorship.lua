@@ -2,6 +2,7 @@
 -- MIT licence, https://github.com/odv-hu/tex-authorship
 
 local M = {}
+local citation_colour = {1, 0, 0}
 
 local attr            -- attribute register number, set by init()
 local gradient = false
@@ -192,13 +193,16 @@ local function colour_for(n)
     if n.id == GLYPH then end_word() end
     return nil
   end
+  local citation = M.citation_attr and get_attribute(n, M.citation_attr) == 1
   local inst = id and instances[id]
   if not inst then
     if n.id == GLYPH then count_glyph(n, "Mine") end
+    if citation then return "citation", citation_colour end
     return nil
   end
   local a = inst.author
   if n.id == GLYPH then count_glyph(n, a.key) end
+  if citation then return "citation", citation_colour end
   local style = style_of(a)
   if style.stops then
     local step = math.floor(inst.n / GRADIENT_STEP)
@@ -349,6 +353,16 @@ local function parse_colour(text)
   local r, g, b = text:match("^%s*([%d.]+)[%s,]+([%d.]+)[%s,]+([%d.]+)%s*$")
   if r then return { tonumber(r), tonumber(g), tonumber(b) } end
   return nil
+end
+
+function M.set_citation_color(rgb)
+  local c = parse_colour(rgb)
+  if not c or not c[1] or not c[2] or not c[3]
+      or c[1] < 0 or c[1] > 1 or c[2] < 0 or c[2] > 1 or c[3] < 0 or c[3] > 1 then
+    warn("\\AuthorshipCitationColor: expected hex or three numbers between 0 and 1; keeping previous colour")
+    return
+  end
+  citation_colour = c
 end
 
 function M.set_color(name, rgb)

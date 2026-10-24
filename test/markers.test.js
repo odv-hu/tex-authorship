@@ -124,3 +124,18 @@ test('collectColors uses a gradient\'s first stop, and the last line wins', () =
   ]);
   assert.deepEqual(M.lookupColor(map, '&AI: ChatGPT'), [0, 1, 0]);
 });
+
+
+test('citation colour picker targets only the value and does not change author colours', () => {
+  for (const value of ['#ff0000', '0.2 0.4 0.8', '0.2,0.4,0.8']) {
+    const line = '\\AuthorshipCitationColor{  ' + value + ' }';
+    const [c] = M.findAuthorshipColors(line);
+    assert.equal(line.slice(c.start, c.end), value);
+    assert.deepEqual(c.rgb, M.parseColor(value));
+    assert.equal(c.name, null);
+  }
+  assert.equal(M.findAuthorshipColors('\\AuthorshipCitationColor{2 0 0}').length, 0);
+  assert.equal(M.findAuthorshipColors('\\AuthorshipCitationColor{red}').length, 0);
+  const line = '\\AuthorshipCitationColor{#ff0000} \\AuthorshipColor{ai}{#00ff00}';
+  assert.deepEqual([...M.collectColors([line])], [['ai', [0, 1, 0]]]);
+});

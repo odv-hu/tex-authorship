@@ -226,11 +226,11 @@ function insideVerbatim(lines, line) {
  * A colour is either three numbers 0–1 ("0.80 0.05 0.45", commas allowed) or hex ("#cc0d73").
  * Gradient stops are separated by commas, or by semicolons when the numbers themselves use commas.
  * @param {string} line
- * @returns {{name: string, start: number, end: number, rgb: number[], stop: number}[]}
+ * @returns {{name: string | null, start: number, end: number, rgb: number[], stop: number}[]}
  *   start/end delimit the colour text; stop is -1 for \AuthorshipColor, else the stop's index
  */
 function findAuthorshipColors(line) {
-  /** @type {{name: string, start: number, end: number, rgb: number[], stop: number}[]} */
+  /** @type {{name: string | null, start: number, end: number, rgb: number[], stop: number}[]} */
   const out = [];
   const re = /\\Authorship(Color|Gradient)\s*\{([^{}]*)\}\s*\{([^{}]*)\}/dg;
   /** @type {RegExpExecArray | null} */
@@ -255,7 +255,19 @@ function findAuthorshipColors(line) {
       offset += piece.length + 1;
     });
   }
-  return out;
+  // Citation colour is a presentation override, never an author palette entry.
+  const citationRe = /\\AuthorshipCitationColor\s*\{([^{}]*)\}/dg;
+  while ((m = citationRe.exec(line))) {
+    const arg = m[1];
+    const text = arg.trim();
+    const rgb = parseColor(text);
+    const base = m.indices && m.indices[1] ? m.indices[1][0] : -1;
+    if (rgb && base >= 0) {
+      const start = base + arg.length - arg.trimStart().length;
+      out.push({ name: null, start, end: start + text.length, rgb, stop: -1 });
+    }
+  }
+  return out.sort((a, b) => a.start - b.start);
 }
 
 /**
@@ -272,7 +284,7 @@ function collectColors(lines) {
   for (const line of lines) {
     if (!line.includes('\\AuthorshipColor') && !line.includes('\\AuthorshipGradient')) continue;
     // a gradient tints the editor with its first stop
-    for (const c of findAuthorshipColors(stripComment(line))) if (c.stop <= 0) map.set(c.name, c.rgb);
+    for (const c of findAuthorshipColors(stripComment(line))) if (c.name !== null && c.stop <= 0) map.set(c.name, c.rgb);
   }
   return map;
 }

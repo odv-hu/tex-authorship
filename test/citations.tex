@@ -1,0 +1,15 @@
+\documentclass{article}
+\usepackage[numbers]{natbib}
+\usepackage[citations]{authorship}
+\usepackage[colorlinks,citecolor=blue]{hyperref}
+\AuthorshipColor{AI: ChatGPT}{0.42 0.80 0.52}
+\AuthorshipCitationColor{#ff0000} % click the swatch to choose another colour
+\begin{document}
+Plain \cite{one} after.
+%[&AI: ChatGPT]
+Green \citep[see][p.~2]{one} after. Textual \citet{one}. Star \citep*{one}. Author \citeauthor{one}.
+%[/&AI: ChatGPT]
+\begin{thebibliography}{1}
+\bibitem[Example(2024)]{one} Example. A reference. 2024.
+\end{thebibliography}
+\end{document}

@@ -81,13 +81,15 @@ Click it for the exact numbers.
 
 **Coloured PDF.** Your normal pdfLaTeX build stays as it is.
 When you want the coloured draft, run *Authorship: Build Coloured Draft (LuaLaTeX)*, or pick LaTeX Workshop's `latexmk (lualatex)` recipe yourself. 
-Line and page breaks are identical to the uncoloured build: colour is applied after TeX has laid out each page.
+By default, line and page breaks are identical to the uncoloured build: colour is applied after TeX has laid out each page.
+The optional `citations` emphasis uses bold type and can change line wrapping.
 
 Package options:
 
 ```latex
 \usepackage[gradient]{authorship}               % AI text in a magenta → orange → violet gradient
 \usepackage[hide]{authorship}                   % switch colouring off without removing markers
+\usepackage[citations]{authorship}              % bold red citations in the coloured draft
 \AuthorshipColor{AI: Claude}{0.10 0.55 0.45}    % RGB 0–1, by label…
 \AuthorshipColor{AI: ChatGPT}{#7a3cff}          % …or hex, same as in the VS Code settings
 \AuthorshipColor{human}{0.2 0.3 0.9}            % …or by kind: ai, human, reference
@@ -188,3 +190,15 @@ Design decisions are recorded in [`docs/adr/`](docs/adr/), and likely next featu
 ## Citing
 
 If you use TeX Authorship in your work, cite it via Zenodo: [10.5281/zenodo.23607060](https://doi.org/10.5281/zenodo.23607060) always resolves to the latest version, and each release has its own DOI on the Zenodo record (version 0.1.13: [10.5281/zenodo.23607061](https://doi.org/10.5281/zenodo.23607061)). GitHub's "Cite this repository" button gives the same metadata from `CITATION.cff`.
+
+### Citation emphasis
+
+The opt-in `citations` option makes standard `\cite` and natbib citations (`\citep`, `\citet`, `\citealt`, `\citealp`, `\citeauthor`, `\citeyear`, `\citeyearpar`) bold red, including their punctuation and optional notes. Red takes precedence over author colours and gradients; attribution counts still belong to the surrounding author. Hyperlinks remain active. `[hide]` and pdfLaTeX retain normal citation styling. Biblatex-specific commands are not covered.
+
+Override the citation colour in the preamble (red is the default):
+
+```latex
+\AuthorshipCitationColor{#ff0000}
+```
+
+The extension shows a colour swatch beside this value; click it to open the colour picker, just as for author colours. Hex and RGB triples such as `1 0 0` are supported. This changes citation emphasis only, retaining bold type and author attribution. Requires the `citations` option; hidden mode remains unchanged.
