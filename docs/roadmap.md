@@ -130,6 +130,25 @@ claiming static parsing reproduces all TeX expansion.
 Consider separate main-text, reference-list and other-material counts. Define what
 each includes; do not present a generic count as automatic journal-policy compliance.
 
+### Per-section breakdown
+
+Report attribution per sectioning unit as well as for the whole document: for each
+`\section` and `\subsection`, the words (and characters) inside each author's markers
+and the unmarked remainder, with shares, for example:
+
+| Section | Author | Claude | ChatGPT |
+|---|---|---|---|
+| 2.4 Surface fitting | 10 % | 75 % | 15 % |
+
+Two uses: it shows a writer which sections still need their own revision pass, and it
+gives the disclosure helper concrete, located figures instead of a single total.
+
+Take the counts from the LuaLaTeX run, like the existing summary, so that headings
+follow the typeset numbering. Define how passages that cross a heading are split,
+whether captions, floats and footnotes count toward the section they appear in, and
+how the unit level is chosen. Keep the output optional (a separate command or an
+option of the summary) and leave the existing totals unchanged.
+
 ### Localised summary labels
 
 Configurable column headings, review-state labels and “Total”, for example
