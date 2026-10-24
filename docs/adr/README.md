@@ -15,3 +15,4 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0008](0008-install-package-in-texmfhome.md) | Install the LaTeX package into TEXMFHOME; keep the format backward compatible | Accepted |
 | [0009](0009-opt-in-citation-emphasis.md) | Opt-in bold red citations in coloured drafts | Accepted |
 | [0010](0010-configurable-citation-colour.md) | Citation colour command and editor picker, default red | Accepted |
+| [0011](0011-normal-release-channel.md) | Use normal GitHub and Marketplace release channels by default | Accepted |

@@ -39,7 +39,7 @@ The prefixes follow iA Writer's [Markdown Annotations](https://github.com/iainc/
 ## Install
 
 **VS Code extension.**
-Search "TeX Authorship" in VS Code's Extensions panel (it is a pre-release, so choose *Install Pre-Release Version* if asked).
+Search "TeX Authorship" in VS Code's Extensions panel.
 Or download `tex-authorship-<version>.vsix` from Releases and run *Extensions: Install from VSIX…* from the Command Palette.
 Needs VS Code 1.100 or newer.
 

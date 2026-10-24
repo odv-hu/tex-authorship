@@ -1,6 +1,6 @@
 # Release: push a tag like v0.1.9 (e.g. from Fork: New Tag… → push), or run it by hand from the
-# Actions tab for an existing tag. The tag decides the version; odd minor versions (0.1.x, 0.3.x)
-# are pre-releases, even ones (0.2.x) are stable releases.
+# Actions tab for an existing tag. The tag decides the version; new releases use the normal
+# GitHub and Marketplace release channels regardless of minor-version parity.
 name: Release
 
 on:
@@ -49,16 +49,11 @@ jobs:
             echo "::warning::package.json says $CURRENT; building as $VERSION from the tag. Bump package.json in the next commit."
             npm version "$VERSION" --no-git-tag-version --allow-same-version
           fi
-          MINOR=$(echo "$VERSION" | cut -d. -f2)
-          if [ $((MINOR % 2)) -eq 1 ]; then
-            echo "VSCE_PRE=--pre-release" >> "$GITHUB_ENV"
-            echo "GH_PRE=--prerelease" >> "$GITHUB_ENV"
-          fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build packages
         run: |
-          npx --yes @vscode/vsce@3 package $VSCE_PRE -o "tex-authorship-$VERSION.vsix"
+          npx --yes @vscode/vsce@3 package -o "tex-authorship-$VERSION.vsix"
           (cd latex && zip -X "../authorship-latex-$VERSION.zip" authorship.sty authorship.lua)
 
       - name: Release notes from commits since the previous tag
@@ -89,7 +84,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${FILES[@]}" --clobber
           else
-            gh release create "$TAG" "${FILES[@]}" --title "$TAG" --notes-file notes.md $GH_PRE
+            gh release create "$TAG" "${FILES[@]}" --title "$TAG" --notes-file notes.md
           fi
 
       - name: Publish to the VS Code Marketplace

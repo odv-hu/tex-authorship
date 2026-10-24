@@ -25,19 +25,14 @@ Run relevant LuaLaTeX fixtures for changes under latex/. Review the actual rende
 
 ## 3. Build into dist/
 
-The existing release policy treats odd minor versions (0.1.x, 0.3.x) as pre-releases and even minor versions (0.2.x) as stable. This concerns the minor number, not the patch number.
+New releases use the normal GitHub and Marketplace release channels, regardless of minor-version parity (ADR-0011). Do not add pre-release flags unless explicitly requested.
 Use the same packager major as CI (`@vscode/vsce@3`). Do not silently use a different version through the unpinned npm package script.
 Run from the repository root after verification; check that these destination files do not already exist before running:
 
 ```sh
 RELEASE_VERSION=$(node -p "require('./package.json').version")
-RELEASE_MINOR=$(node -p "require('./package.json').version.split('.')[1]")
 mkdir -p dist
-if [ $((RELEASE_MINOR % 2)) -eq 1 ]; then
-  npx --yes @vscode/vsce@3 package --pre-release -o "dist/tex-authorship-$RELEASE_VERSION.vsix"
-else
-  npx --yes @vscode/vsce@3 package -o "dist/tex-authorship-$RELEASE_VERSION.vsix"
-fi
+npx --yes @vscode/vsce@3 package -o "dist/tex-authorship-$RELEASE_VERSION.vsix"
 (cd latex && zip -X "../dist/authorship-latex-$RELEASE_VERSION.zip" authorship.sty authorship.lua)
 ```
 
@@ -50,7 +45,7 @@ Never finish with only a VSIX in /tmp or a same-version local test installation.
 Open the VSIX as a ZIP and verify:
 
 - The archive is readable; extension/package.json has the requested version and publisher odv-hu.
-- extension.vsixmanifest has the matching version and intended pre-release status.
+- extension.vsixmanifest has the matching version and no enabled pre-release flag.
 - Bundled src/ and latex/ files match the intended source, including the new feature.
 - No credentials, node_modules, previous archives or unrelated artifacts are included.
 - The standalone ZIP contains the matching authorship.sty and authorship.lua.
@@ -67,3 +62,5 @@ Pushing a release tag triggers the GitHub workflow. It creates or updates GitHub
 The workflow can replace existing assets, so do not rerun it against an existing release casually.
 
 When the owner requests local installation, install the versioned dist/ VSIX and verify the installed version. Tell the owner to reload VS Code if the extension host still has the previous implementation loaded.
+
+Changing the workflow does not promote existing GitHub pre-releases or alter previously published VSIX files. The existing-release branch only uploads assets; it does not change release status. Promotion of an existing release is a separate, explicitly authorized action.
