@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><a href="https://doi.org/10.5281/zenodo.23607060"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.23607060.svg"></a></p>
+<p align="center"><a href="https://doi.org/10.5281/zenodo.23607060">DOI: 10.5281/zenodo.23607060</a></p>
 
 ```The tool is built for our own writing, it is maintained as we need it.```
 
@@ -175,6 +175,8 @@ How TeX Authorship differs:
 it works on LaTeX, keeps the record as comment lines inside the file (so formatters, undo, git and other editors can't misplace it), asks you at paste time instead of guessing from typing speed, and carries the same colours into the PDF with a per-author summary.
 
 ## Development
+
+Shared agent instructions are in [AGENTS.md](AGENTS.md). For versioned artifacts and release preparation, follow [docs/RELEASING.md](docs/RELEASING.md).
 
 ```sh
 npm install
