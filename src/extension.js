@@ -7,6 +7,9 @@ const M = require('./markers');
 const T = require('./texinstall');
 const R = require('./references');
 const V = require('./reviews');
+const S = require('./strip');
+const Submission = require('./submission');
+const History = require('./history');
 
 /** @typedef {{label: string, kind: import('./markers').AuthorKind, color: string, key: string}} Author */
 
@@ -368,6 +371,81 @@ async function cmdMarkSelection() {
   await editor.edit(eb => eb.replace(sel, wrappedFor(doc, sel, withSource(text,source,eolOf(doc)), author.key)));
 }
 
+async function cmdStripAuthorship() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !isTex(editor.document)) return;
+  const doc = editor.document, original = doc.getText(), version = doc.version;
+  try {
+    let clean = S.stripAuthorship(original);
+    if (clean === original) {
+      vscode.window.showInformationMessage('Authorship: no removable syntax found in this document.'); return;
+    }
+    // Fragments have no document end and no document-wide table of their own.
+    let main = false;
+    try { S.stripAuthorship(clean, '% count location\n'); main = true; }
+    catch (error) {
+      if (!(error instanceof Error) || !error.message.startsWith('No document end found')) throw error;
+    }
+    if (main) {
+      let aux;
+      if (doc.uri.scheme === 'file') {
+        try { aux = await vscode.workspace.fs.readFile(vscode.Uri.file(doc.uri.fsPath.replace(/\.[^/.]+$/, '') + '.aux')); }
+        catch { /* Build directories are selected explicitly below. */ }
+      }
+      if (!aux) {
+        const chosen = await vscode.window.showOpenDialog({canSelectMany:false,
+          openLabel:'Use document counts', filters:{'LaTeX auxiliary file':['aux']},
+          title:'Select the main document’s .aux file from its last LuaLaTeX build'});
+        if (!chosen?.length || !currentDocument(editor,version)) return;
+        aux = await vscode.workspace.fs.readFile(chosen[0]);
+      }
+      clean = Submission.prepareSubmission(original,Buffer.from(aux).toString('utf8'));
+    }
+    if (!currentDocument(editor,version)) return;
+    const applied = await editor.edit(eb => eb.replace(
+      new vscode.Range(0, 0, doc.lineCount - 1, doc.lineAt(doc.lineCount - 1).text.length), clean));
+    if (applied) vscode.window.showInformationMessage('Authorship removed. Save and commit with “Removed Authorship” in the message for Git restoration. The attributed draft must already exist in the preceding commit. Counts are a fixed snapshot; included files need separate cleanup.');
+  } catch (error) {
+    vscode.window.showWarningMessage('Authorship: ' + (error instanceof Error ? error.message : String(error)));
+  }
+}
+
+async function cmdRestoreAuthorship() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !isTex(editor.document)) return;
+  const doc = editor.document, version = doc.version;
+  if (doc.uri.scheme !== 'file') {
+    vscode.window.showInformationMessage('Authorship: open a saved file in a Git repository first.'); return;
+  }
+  try {
+    const history = await History.removalHistory(doc.uri.fsPath);
+    if (!history.entries.length) {
+      vscode.window.showInformationMessage('Authorship: no “Removed Authorship” commits found for this file on the current branch.'); return;
+    }
+    const chosen = await vscode.window.showQuickPick(history.entries.map(entry => ({
+      label:entry.date + ' · ' + entry.subject, description:entry.hash.slice(0,8), entry
+    })), {title:'Restore the file as it was before a removal commit'});
+    if (!chosen || !currentDocument(editor,version)) return;
+    const content = await History.beforeRemoval(history.root,history.relative,chosen.entry.hash);
+    if (S.stripAuthorship(content) === content) {
+      vscode.window.showWarningMessage('Authorship: the preceding revision has no removable authorship syntax. Select an earlier removal commit.'); return;
+    }
+    const action = await vscode.window.showQuickPick([
+      {label:'Open recovered copy', description:'Keep current edits; inspect the historical document separately', replace:false},
+      {label:'Restore this document', description:'Replace the entire buffer with the historical version, including its text', replace:true}
+    ], {title:'Recover authorship from Git history'});
+    if (!action || !currentDocument(editor,version)) return;
+    if (action.replace) {
+      await editor.edit(eb => eb.replace(new vscode.Range(0,0,doc.lineCount-1,doc.lineAt(doc.lineCount-1).text.length),content));
+    } else {
+      const recovered = await vscode.workspace.openTextDocument({content,language:doc.languageId});
+      await vscode.window.showTextDocument(recovered);
+    }
+  } catch (error) {
+    vscode.window.showWarningMessage('Authorship: could not recover this file from Git. ' + (error instanceof Error ? error.message : String(error)));
+  }
+}
+
 async function cmdAssociateSource() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
@@ -576,6 +654,8 @@ function activate(context) {
     vscode.commands.registerCommand('texAuthorship.pasteAs', cmdPasteAs),
     vscode.commands.registerCommand('texAuthorship.markSelection', cmdMarkSelection),
     vscode.commands.registerCommand('texAuthorship.unmark', cmdUnmark),
+    vscode.commands.registerCommand('texAuthorship.stripDocument', cmdStripAuthorship),
+    vscode.commands.registerCommand('texAuthorship.restoreDocument', cmdRestoreAuthorship),
     vscode.commands.registerCommand('texAuthorship.associateReference', cmdAssociateSource),
     vscode.commands.registerCommand('texAuthorship.reviewed', () => cmdReview('reviewed')),
     vscode.commands.registerCommand('texAuthorship.revised', () => cmdReview('revised')),

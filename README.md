@@ -139,6 +139,43 @@ factual accuracy or change the AI-origin word/character totals.
 **Making a passage yours.** Once you've rewritten a Claude passage enough, put the cursor inside it, right-click → *Unmark Passage*.
 The two marker lines are removed and the text stays as it is.
 
+**Preparing a submission.** First save and commit the attributed draft, then
+build the main document with LuaLaTeX until its counts are current. Run
+*Authorship: Remove Authorship from This Document* from the Command Palette.
+It removes passage markers, source/review metadata, `authorship` package loading,
+owner/colour settings, both summary commands and the review legend in one
+undoable edit. Other packages, passage text, citations and `%` spacing joins stay.
+
+For a main document, it adds a plain **Document counts** table immediately before
+`\end{document}`, after the references. It contains only total words and
+characters (excluding spaces), with no author names, shares or colours. Counts
+come from the main `.aux` file beside the document; if absent, select it from
+your build directory. Missing or incomplete counts stop the operation. The
+numbers describe the last attributed LuaLaTeX build, including headings and
+bibliography, and are fixed: rebuild the attributed draft before cleanup if the
+text has changed. The submission compiles without the authorship package.
+
+Run cleanup separately on included files; fragments receive no separate table.
+Literal code examples and ordinary comments are preserved. Custom macros,
+handwritten summary headings and surrounding floats need manual review.
+Unsupported authorship commands or incomplete arguments stop the operation
+without editing. No files are automatically saved, deleted, committed or installed.
+
+**Restoring from Git.** Save the cleaned files and commit them yourself with
+**Removed Authorship** somewhere in the commit message. Run *Authorship: Restore
+Authorship from Git History* to choose a matching commit for the current file on
+the current branch. It recovers that file from the commit's first parent: choose
+*Open recovered copy* to inspect it separately, or *Restore this document* to
+replace the current buffer in one undoable edit. Neither choice changes Git
+history or saves automatically.
+
+Restoration recovers the **whole historical file**, including its earlier text;
+it does not merge markers into later revisions. The attributed draft must have
+been committed before removal; Git cannot recover attribution that was never
+committed. Restore included files separately. History lookup uses the current
+file path; renames and removal commits on other branches require manual Git
+recovery.
+
 **Status bar.** Shows your share and each author's share of the file, counting visible characters and skipping comments and the preamble.
 Click it for the exact numbers.
 

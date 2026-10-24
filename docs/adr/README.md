@@ -22,3 +22,5 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0015](0015-ai-review-states.md) | Track human review separately from AI origin | Accepted |
 | [0016](0016-remove-editor-review-borders.md) | Remove editor review borders; retain tint and labels | Accepted |
 | [0017](0017-reliability-gates.md) | Validate tagged source and isolate reliability tests | Accepted |
+| [0018](0018-remove-document-authorship.md) | Explicit, undoable document authorship removal | Accepted |
+| [0019](0019-submission-counts-and-history-restore.md) | Submission totals and restoration from removal commits | Accepted |

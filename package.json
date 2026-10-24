@@ -106,6 +106,18 @@
         "title": "Paste",
         "category": "Authorship",
         "enablement": "!editorReadonly"
+      },
+      {
+        "command": "texAuthorship.stripDocument",
+        "title": "Remove Authorship from This Document",
+        "category": "Authorship",
+        "enablement": "!editorReadonly && (resourceLangId == latex || resourceLangId == tex)"
+      },
+      {
+        "command": "texAuthorship.restoreDocument",
+        "title": "Restore Authorship from Git History",
+        "category": "Authorship",
+        "enablement": "!editorReadonly && (resourceLangId == latex || resourceLangId == tex)"
       }
     ],
     "menus": {

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 const M = require('../src/markers');
 
-function harness(text, source = 'smith2024') {
+function harness(text, source = 'smith2024', options = {}) {
   const edits = [], warnings = [], decorations = [];
   class Position { constructor(line,character) { this.line=line;this.character=character; } }
   class Range { constructor(a,b,c,d) { if (typeof a === 'number') {this.start=new Position(a,b);this.end=new Position(c,d);} else {this.start=a;this.end=b;} } }
@@ -21,8 +21,11 @@ function harness(text, source = 'smith2024') {
     env:{clipboard:{readText:async()=> 'Pasted text.'}},
     workspace:{getConfiguration:()=>({get:key=>key==='authors'?[{label:'Custom reference',kind:'reference',color:'#888888'}]:undefined})},
     window:{createTextEditorDecorationType:options=>{decorations.push(options);return options;},activeTextEditor:editor,showQuickPick:async items=>items.find(i=>i.author?.kind==='reference') || items.find(i=>i.key?.startsWith('@')),showWarningMessage:msg=>warnings.push(msg),showInformationMessage:msg=>warnings.push(msg)}};
-  const context={module:{exports:{}},require:name=>name==='vscode'?vscode:name==='./references'?{pickSource:async()=> typeof source === 'function'?source(doc):source}:require(name.startsWith('.')?path.resolve(__dirname,'../src',name):name),console,Buffer,setTimeout,clearTimeout};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark,cmdReview,decorationFor};',context);
+  Object.assign(vscode.window, options.window);
+  Object.assign(vscode.workspace, options.workspace);
+  vscode.Uri = {file:fsPath=>({scheme:'file',fsPath})};
+  const context={module:{exports:{}},require:name=>name==='vscode'?vscode:name==='./history' && options.history?options.history:name==='./references'?{pickSource:async()=> typeof source === 'function'?source(doc):source}:require(name.startsWith('.')?path.resolve(__dirname,'../src',name):name),console,Buffer,Error,setTimeout,clearTimeout};
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark,cmdReview,cmdStripAuthorship,cmdRestoreAuthorship,decorationFor};',context);
   return {...context.module.exports,edits,warnings,editor,doc,decorations};
 }
 
@@ -121,4 +124,39 @@ test('authorship decorations never add borders, including unreviewed and stale p
   }
   assert.equal(h.decorations[0].backgroundColor,h.decorations[3].backgroundColor);
   assert.notEqual(h.decorations[0].backgroundColor,h.decorations[1].backgroundColor);
+});
+
+
+test('document cleanup replaces the buffer once and leaves failed/no-op documents untouched', async () => {
+  const h = harness('\\usepackage{authorship}\n%[&AI: Claude]\nText.\n%[/&AI: Claude]\n\\AuthorshipSummary');
+  await h.cmdStripAuthorship();
+  assert.equal(h.edits.length, 1);
+  assert.equal(h.edits[0].text, 'Text.\n');
+  assert.equal(h.edits[0].range.start.line, 0);
+  assert.equal(h.edits[0].range.end.line, 4);
+  for (const source of ['Plain text.', '\\AuthorshipOwner{broken']) {
+    const unchanged = harness(source); await unchanged.cmdStripAuthorship();
+    assert.equal(unchanged.edits.length, 0); assert.equal(unchanged.warnings.length, 1);
+  }
+});
+
+
+test('submission command reads PDF totals and refuses stale buffers after async reads', async () => {
+  const text='\\usepackage{authorship}\n\\begin{document}\nText.\n\\end{document}';
+  const aux=Buffer.from('\\AuthorshipSetSummary{Mine=40,8}');
+  const h=harness(text,null,{workspace:{fs:{readFile:async()=>aux}}});
+  await h.cmdStripAuthorship();
+  assert.equal(h.edits.length,1);assert.match(h.edits[0].text,/Words & 8/);
+  const stale=harness(text,null,{workspace:{fs:{readFile:async()=>{stale.doc.version++;return aux;}}}});
+  await stale.cmdStripAuthorship();assert.equal(stale.edits.length,0);
+});
+test('history restore offers the parent version and replaces only after selecting restore', async () => {
+  const historical='%[&AI: Test]\nEarlier text.\n%[/&AI: Test]';
+  const history={removalHistory:async()=>({root:'/paper',relative:'main.tex',entries:[{hash:'a'.repeat(40),date:'2026-10-24',subject:'Removed Authorship'}]}),beforeRemoval:async()=>historical};
+  const h=harness('Submission text.',null,{history,window:{showQuickPick:async items=>items.find(i=>i.replace) || items[0]}});
+  await h.cmdRestoreAuthorship();assert.equal(h.edits.length,1);assert.equal(h.edits[0].text,historical);
+  const cancelled=harness('Submission text.',null,{history,window:{showQuickPick:async()=>undefined}});
+  await cancelled.cmdRestoreAuthorship();assert.equal(cancelled.edits.length,0);
+  const stale=harness('Submission text.',null,{history,window:{showQuickPick:async items=>{stale.doc.version++;return items[0];}}});
+  await stale.cmdRestoreAuthorship();assert.equal(stale.edits.length,0);
 });
