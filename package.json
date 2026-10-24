@@ -94,39 +94,54 @@
     "menus": {
       "editor/context": [
         {
+          "command": "editor.action.clipboardCutAction",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "navigation@-100"
+        },
+        {
+          "command": "editor.action.clipboardCopyAction",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "navigation@-99"
+        },
+        {
+          "command": "editor.action.clipboardPasteAction",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "navigation@-98"
+        },
+        {
           "command": "texAuthorship.pasteAs",
           "when": "resourceLangId == latex || resourceLangId == tex",
-          "group": "9_cutcopypaste@10"
+          "group": "navigation@-90"
         },
         {
           "command": "texAuthorship.markSelection",
           "when": "editorHasSelection && (resourceLangId == latex || resourceLangId == tex)",
-          "group": "9_cutcopypaste@11"
+          "group": "navigation@-89"
         },
         {
           "command": "texAuthorship.unmark",
           "when": "resourceLangId == latex || resourceLangId == tex",
-          "group": "9_cutcopypaste@12"
+          "group": "navigation@-88"
         },
         {
           "command": "texAuthorship.associateReference",
           "when": "resourceLangId == latex || resourceLangId == tex",
-          "group": "9_cutcopypaste@13"
+          "group": "navigation@-87"
         },
         {
           "command": "texAuthorship.reviewed",
           "when": "resourceLangId == latex || resourceLangId == tex",
-          "group": "9_cutcopypaste@14"
+          "group": "navigation@-86"
         },
         {
           "command": "texAuthorship.revised",
           "when": "resourceLangId == latex || resourceLangId == tex",
-          "group": "9_cutcopypaste@15"
+          "group": "navigation@-85"
         },
         {
           "command": "texAuthorship.clearReview",
           "when": "resourceLangId == latex || resourceLangId == tex",
-          "group": "9_cutcopypaste@16"
+          "group": "navigation@-84"
         }
       ]
     },

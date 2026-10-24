@@ -71,6 +71,10 @@ A small paste-options button appears next to the pasted text: click it, or press
 If you ignore it, the paste stays plain and counts as yours.
 To choose before pasting, use **⌘⌥V** (Ctrl+Alt+V) or right-click → *Paste as…*.
 
+In LaTeX editors, clipboard shortcuts and authorship commands appear at the top of
+the right-click menu. VS Code retains its original Cut/Copy/Paste entries farther
+down; the top shortcuts invoke the same built-in commands.
+
 **Existing text.** Select it, right-click → *Mark Selection as…*.
 
 **Reference sources.** When you choose a reference author in *Mark Selection as…*
