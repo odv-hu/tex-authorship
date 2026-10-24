@@ -1,57 +1,166 @@
 # Roadmap
 
-Features likely to be needed, roughly in order.
-Nothing here is decided; when something is, it gets an [ADR](adr/README.md).
+Updated for **0.1.20**, 2026-10-24.
+Reliability is the next priority, before adding more attribution features.
+Future items below are proposals, not shipped functionality; significant implementation
+decisions get an [ADR](adr/README.md).
 
-## Next
+## Current baseline: 0.1.20
+
+Already implemented:
+
+- Passage-level AI, human and reference markers, editor tints and LuaLaTeX colouring.
+- Character/word attribution summaries and an opt-in full-width summary command.
+- Opt-in standard/natbib citation emphasis, configurable citation colour and editor colour pickers.
+- Bibliography source selection for reference marking and explicit paste, plus source
+  reassignment for existing passages. Source selection does not insert a citation.
+- Reviewed/Revised AI passages with a recorded reviewer, softened tint and stale-review
+  detection. AI origin and attribution totals remain unchanged.
+- Reviewer labels in the editor and reviewer bars/legend in the PDF. **Editor line
+  borders were removed in 0.1.20**; they are not a future feature to restore.
+- Marketplace distribution, citation metadata (`CITATION.cff`) and Zenodo DOI links.
+
+The test suite includes marker, bibliography, review and installation logic, plus
+command tests using a mocked VS Code API. LaTeX fixtures and manual PDF comparisons
+exist; real extension-host tests and a repeatable PDF regression runner in CI do not.
+
+## Next: reliability
+
+### 1. Release consistency and reproducibility
+
+- Fail before packaging or publishing if the tag, `package.json`, both root version
+  fields in `package-lock.json`, and `authorship.sty` disagree. Remove the workflow's
+  silent extension-only version correction.
+- Validate tag syntax and package metadata before running publication steps.
+- Verify the VSIX and matching LaTeX ZIP against the tagged source, including version,
+  publisher, release channel and bundled files. Preserve published artifacts and tags.
+- Make the release sequence explicit: align versions, verify, commit, build from that
+  commit, then tag that commit and publish only when authorised.
+- Add a `CHANGELOG.md` and keep the local release checklist and CI aligned.
+
+Done when deliberately mismatched versions fail before publication and a clean,
+version-aligned tagged commit produces both inspected artifacts reproducibly.
+
+### 2. Real VS Code integration and visual checks
+
+- Run tests in an actual extension host, for example with `@vscode/test-electron`.
+- Exercise normal paste options, explicit paste, marking/unmarking, bibliography
+  selection, reassignment, cancellation, stale edits and undo/redo.
+- Check review state transitions, reviewer selection, colour pickers and highlighting
+  toggles in light and dark themes, with word wrap on and off.
+- Verify decorations visually, including long wrapped passages and nested markers.
+  The line-border regression showed that mocked API assertions alone cannot establish
+  that the editor remains readable.
+- Use isolated test settings and temporary TeX directories so tests do not change the
+  user's installed extension or personal TeX package.
+
+Done when the main editing workflows run in the extension host and the supported
+visual cases have repeatable checks or an explicit manual release checklist.
+
+### 3. Automated PDF regression checks
+
+- Turn the existing fixture compilations and comparisons into a repository-owned runner
+  and CI checks, with temporary outputs outside tracked sources.
+- Cover ordinary, hidden, gradient and citation-emphasis modes; standard/natbib
+  citations; review/source metadata; and full-width summaries.
+- Compare glyph positions and attribution counts where layout should be unchanged.
+  Treat bold citation emphasis separately because it can legitimately change wrapping.
+- Exercise nested passages, included files, page breaks, footnotes, floats and legends.
+  Check reviewer bars/legends visually as well as checking text geometry.
+- Compile relevant fixtures with pdfLaTeX and without the package where applicable.
+  Verify that hidden mode produces ordinary styling and legends do not enter counts.
+
+Done when these checks run automatically and produce useful diagnostics and preview
+artifacts on failure, rather than depending on one-off local scripts.
+
+### 4. LaTeX and document-discovery robustness
+
+- Improve and test consistent protection against markers in inline verbatim, URLs and
+  custom verbatim environments across all editing workflows.
+- Address known PDF gaps: explicit `\textcolor` spanning line breaks and running heads
+  inside `multicols` (ADR-0005).
+- Test and document narrow margins, two-column layouts and reviewer bars near other
+  marginal content; keep unsupported layout cases explicit.
+- Harden bibliography/root discovery, cancellation and large-project behaviour. Make
+  unsupported macro-generated paths and scoped bibliographies clear rather than guessing.
+- Investigate biblatex citation emphasis separately from bibliography discovery;
+  recognising `\addbibresource` does not imply support for biblatex citation styling.
+
+## After reliability: statistics and reporting
+
+### Review progress statistics
+
+Show **AI-origin words** split into mutually exclusive states:
+
+- Unreviewed.
+- Reviewed and unchanged since review.
+- Revised and unchanged since review.
+- Changed since review (stale Reviewed or Revised passages).
+
+Keep this separate from authorship totals: reviewing a passage must not transfer its
+words to the reviewer. Define the denominator and nesting rules explicitly, avoid
+counting nested text twice, and make the state totals reconcile with the AI-origin
+word total. Optional per-reviewer breakdowns can follow. Distinguish the editor's
+source-based estimates from the PDF's typeset counts.
+
+The current reviewer legend identifies people/states; it is **not** a review-progress
+word-count breakdown.
+
+### Project-wide counts
+
+Aggregate files reachable from a selected main document instead of reporting only
+the active file in VS Code. Reuse bibliography discovery where suitable without
+claiming static parsing reproduces all TeX expansion.
+
+Consider separate main-text, reference-list and other-material counts. Define what
+each includes; do not present a generic count as automatic journal-policy compliance.
 
 ### Localised summary labels
-Configurable column titles and "Total" (e.g. Szerző, Karakterek, Szavak, Összesen), for documents not written in English.
 
-### Release hygiene
-A `CHANGELOG.md`, compiling `examples/sample.tex` with LuaLaTeX and pdfLaTeX in the release workflow, Marketplace publishing without a personal access token (Microsoft retires global Azure DevOps tokens on 1 December 2026; the replacement is Entra ID workload identity federation), and a `CITATION.cff` (with ORCID) so the repository can be cited; Zenodo can then archive releases with a DOI.
+Configurable column headings, review-state labels and “Total”, for example
+*Szerző*, *Karakterek*, *Szavak*, *Összesen*.
 
-## Git-based authorship
+### Disclosure helper
 
-For documents written with co-authors in a shared repository, unmarked text should belong to whoever wrote it, not automatically to the owner.
-Markers keep their role for what git cannot see (AI and reference text), so a passage could read "AI: ChatGPT, pasted by Anna".
+Draft an editable AI-use statement from attribution and review information.
+Describe what the records actually establish; percentages and review labels do not
+certify factual accuracy or journal-policy compliance.
 
-Likely steps:
+## Longer-term attribution work
 
-1. **Editor:** `git blame` (ignoring whitespace, following moved lines, honouring `.git-blame-ignore-revs` for reformatting commits) to tint co-authors' lines; uncommitted lines and the local `git config user.name` are the owner.
-2. **Shared authors file** in the repository (email → display name, GitHub handle, colour), so every collaborator sees the same names and colours. GitHub handles filled in from no-reply emails or the GitHub API (`gh`).
-3. **PDF:** before a LuaLaTeX build, the extension writes a small file listing each source line's author; the package already sees file names and line numbers as TeX reads them.
-4. **Word-level origin** instead of line-level blame, by replaying the file's history word by word, if line blame proves too coarse.
+### Git-based human authorship
 
-Open question to settle first: does "author" mean the last person to change the text (what `git blame` reports) or the person who first wrote it?
-Known limits: squash merges credit everything to one person; Overleaf's git integration may record a single identity; emails must not end up in the PDF.
-[git notes](https://git-scm.com/docs/git-notes) (as used by git-ai) are an option for storing attribution alongside commits without touching the `.tex` files.
+Explore attributing otherwise unmarked text to human collaborators using Git history,
+while retaining explicit AI/reference provenance. Decide first whether “author” means
+original contributor or last editor; `git blame` supplies the latter, not necessarily
+the former.
 
-## Finer attribution inside passages
+Possible stages: editor display, a shared author/name/colour mapping, then a PDF mapping
+produced before compilation. Account for whitespace-only changes, moved text, squash
+merges and Overleaf identities. Do not expose email addresses in PDFs. Word-level
+history is a later investigation, not a promised extension of line-level blame.
 
-Store the original text of each paste (keyed by an id in the marker, e.g. `%[&AI: Claude #7f3a]`) and compare it with the current passage on demand.
-Characters still matching the original stay with the pasted author; added or changed ones are the owner's.
-This gives per-character colouring and figures like "62% of this passage is still Claude's original" without tracking keystrokes, and keeps the file format (see [ADR 0003](adr/0003-attribution-at-paste-time-per-passage.md)).
+### Finer attribution inside passages
 
-## Project-wide view in VS Code
+Explore storing an original-text snapshot and comparing it with subsequent edits to
+identify retained AI text and human changes. This is separate from Reviewed/Revised,
+which records human review while keeping the whole passage's AI-origin attribution.
 
-The status bar counts the current file only.
-A project view would sum all files reachable from the main file (`\input`, `\include`, LaTeX Workshop's root), closer to the PDF summary.
+Decide storage, matching, nesting, privacy and counting semantics before implementation.
+Do not encode identifiers in author labels if that would split author identities or
+change colour lookup. Any new format must preserve existing document behaviour.
 
-## Interoperability
+## Interoperability and distribution
 
-- Import and export iA Writer's [Markdown Annotations](https://github.com/iainc/Markdown-Annotations), e.g. for text drafted in iA Writer or Obsidian and moved into LaTeX.
-- A disclosure-statement helper: turn the summary numbers into a sentence for a journal's AI-use statement, possibly using the task categories from [aidisclose.org](https://aidisclose.org/).
-- Publish the extension on the VS Code Marketplace and Open VSX; consider submitting the LaTeX package to CTAN (needs documentation in CTAN's format).
+- Import/export iA Writer Markdown Annotations, with explicit handling of differences
+  in passage, character and review semantics.
+- Open VSX distribution and possible CTAN packaging/documentation. Marketplace
+  publication and citation/DOI setup are already in place.
+- Revisit automated Marketplace authentication against current supported publisher
+  options when implementing it; do not rely on an old migration date in this roadmap.
 
-## Robustness and testing
+## Exploratory, not prioritised
 
-- Integration tests that run inside a real VS Code (`@vscode/test-electron`) for the paste options, colour picker and decorations.
-- PDF regression tests: compile the sample and compare text positions with colouring on and off.
-- Known LaTeX gaps from [ADR 0005](adr/0005-pdf-colouring-in-luatex.md): `\textcolor` spanning a line break inside a passage, running heads inside `multicols`.
-- Better detection of places where markers cannot go (`\verb`, `\url`, custom verbatim environments).
-
-## Possibly
-
-- An optional Claude Code hook that marks text an agent writes, if agents ever edit the documents.
-- Colouring under pdfLaTeX via a preprocessing step, if LuaLaTeX drafts prove too different from pdfLaTeX output.
+- An optional coding-agent hook for explicitly recording text inserted by an agent.
+- Coloured pdfLaTeX output through preprocessing, if a demonstrated need justifies the
+  additional build steps and generated sources.
