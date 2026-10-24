@@ -19,3 +19,4 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0012](0012-bibliography-linked-reference-passages.md) | Link reference passages to bibliography entries without inserting citations | Proposed |
 | [0013](0013-full-width-summary.md) | Opt-in full-width summary in document flow | Accepted |
 | [0014](0014-bibliography-picker.md) | Implement source-only bibliography selection for reference passages | Accepted |
+| [0015](0015-ai-review-states.md) | Track human review separately from AI origin | Accepted |

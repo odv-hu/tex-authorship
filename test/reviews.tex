@@ -1,0 +1,32 @@
+\documentclass{article}
+\providecommand\ReviewOptions{citations}
+\usepackage[\ReviewOptions]{authorship}
+\AuthorshipOwner{Example Owner}
+\begin{document}
+Owner text before the passages.
+%[&AI: ChatGPT]
+% authorship-review: {"version":1,"status":"reviewed","by":"Balázs","color":"#3278aa","hash":"220b70e2eb2080d69cd1e15510a02272c865e93f39976776759f6264da632fac"}
+Read and accepted AI text with a citation \cite{x} and a footnote\footnote{This note keeps its AI origin.}.
+%[/&AI: ChatGPT]
+
+Owner text between passages.
+
+%[&AI: ChatGPT]
+% authorship-review: {"version":1,"status":"revised","by":"Anna","color":"#209050","hash":"a008d062614b9732bf7186c1b153353be74e26a037f03da7f2c5cdbedabd3f41"}
+Edited AI text, still based on the original response.
+%[/&AI: ChatGPT]
+
+Owner text between passages.
+
+%[&AI: ChatGPT]
+% authorship-review: {"version":1,"status":"reviewed","by":"Balázs","color":"#3278aa","hash":"25216b702611354ec40be00a056edb5e3ef46aa83dfbccb7a6eda86f55a21b5b"}
+This passage was changed after review.
+%[/&AI: ChatGPT]
+
+Owner text between passages.
+
+\begin{thebibliography}{1}
+\bibitem{x} A reference.
+\end{thebibliography}
+\AuthorshipSummary
+\end{document}

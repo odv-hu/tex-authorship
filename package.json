@@ -74,6 +74,21 @@
         "command": "texAuthorship.associateReference",
         "title": "Associate Reference Source\u2026",
         "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.reviewed",
+        "title": "Mark AI Passage as Reviewed\u2026",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.revised",
+        "title": "Mark AI Passage as Revised\u2026",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.clearReview",
+        "title": "Remove AI Passage Review",
+        "category": "Authorship"
       }
     ],
     "menus": {
@@ -97,6 +112,21 @@
           "command": "texAuthorship.associateReference",
           "when": "resourceLangId == latex || resourceLangId == tex",
           "group": "9_cutcopypaste@13"
+        },
+        {
+          "command": "texAuthorship.reviewed",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "9_cutcopypaste@14"
+        },
+        {
+          "command": "texAuthorship.revised",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "9_cutcopypaste@15"
+        },
+        {
+          "command": "texAuthorship.clearReview",
+          "when": "resourceLangId == latex || resourceLangId == tex",
+          "group": "9_cutcopypaste@16"
         }
       ]
     },

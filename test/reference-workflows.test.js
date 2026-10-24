@@ -11,7 +11,7 @@ function harness(text, source = 'smith2024') {
   class Position { constructor(line,character) { this.line=line;this.character=character; } }
   class Range { constructor(a,b,c,d) { if (typeof a === 'number') {this.start=new Position(a,b);this.end=new Position(c,d);} else {this.start=a;this.end=b;} } }
   const lines = text.split('\n');
-  const doc = {version:1,isClosed:false,eol:1,uri:{scheme:'file',fsPath:'/paper/main.tex'},lineCount:lines.length,
+  const doc = {languageId:'latex',version:1,isClosed:false,eol:1,uri:{scheme:'file',fsPath:'/paper/main.tex'},lineCount:lines.length,
     getText:()=>text,
     lineAt:i=>({text:lines[i],range:new Range(i,0,i,lines[i].length),rangeIncludingLineBreak:new Range(i,0,i+1,0)})};
   const selection = new Range(0,0,0,lines[0].length);selection.isEmpty=false;selection.active=new Position(0,0);
@@ -20,9 +20,9 @@ function harness(text, source = 'smith2024') {
   const vscode = {Position,Range,EndOfLine:{CRLF:2},DocumentDropOrPasteEditKind:{Empty:kind},
     env:{clipboard:{readText:async()=> 'Pasted text.'}},
     workspace:{getConfiguration:()=>({get:key=>key==='authors'?[{label:'Custom reference',kind:'reference',color:'#888888'}]:undefined})},
-    window:{activeTextEditor:editor,showQuickPick:async items=>items.find(i=>i.author?.kind==='reference'),showWarningMessage:msg=>warnings.push(msg),showInformationMessage:msg=>warnings.push(msg)}};
+    window:{activeTextEditor:editor,showQuickPick:async items=>items.find(i=>i.author?.kind==='reference') || items.find(i=>i.key?.startsWith('@')),showWarningMessage:msg=>warnings.push(msg),showInformationMessage:msg=>warnings.push(msg)}};
   const context={module:{exports:{}},require:name=>name==='vscode'?vscode:name==='./references'?{pickSource:async()=> typeof source === 'function'?source(doc):source}:require(name.startsWith('.')?path.resolve(__dirname,'../src',name):name),console,Buffer,setTimeout,clearTimeout};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark};',context);
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark,cmdReview};',context);
   return {...context.module.exports,edits,warnings,editor,doc};
 }
 
@@ -92,4 +92,19 @@ test('duplicate selection cannot return a key; missing resources do not hide usa
 test('root cycle and picker cancellation perform no mutation',async()=>{
   const h=sourcePicker({'/paper/main.tex':'% !TeX root = main.tex'},'/paper/main.tex',[]);
   assert.equal(await h.run(),undefined);assert.equal(h.warnings.length,1);
+});
+
+
+test('review commands default to owner, preserve AI markers and can remove review',async()=>{
+  const V=require('../src/reviews');
+  for(const state of ['reviewed','revised']) {
+    const h=harness('%[&AI: ChatGPT]\nText\n%[/&AI: ChatGPT]');
+    await h.cmdReview(state);
+    assert.equal(h.edits.length,1);assert.equal(h.edits[0].position.line,1);
+    const r=V.parse(h.edits[0].text.trim());assert.equal(r.status,state);assert.equal(r.by,'Mine');assert.equal(r.color,'#000000');
+    const reviewed='%[&AI: ChatGPT]\n'+h.edits[0].text+'Text\n%[/&AI: ChatGPT]';
+    const remove=harness(reviewed);await remove.cmdReview('remove');assert.equal(remove.edits[0].text,'');
+    const unmark=harness(reviewed);await unmark.cmdUnmark();assert.deepEqual(unmark.edits.map(e=>e.range.start.line),[3,1,0]);
+  }
+  const ref=harness('%[*Reference]\nText\n%[/*Reference]');await ref.cmdReview('reviewed');assert.equal(ref.edits.length,0);
 });

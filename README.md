@@ -105,6 +105,33 @@ an association leaves the reference attribution intact; *Unmark Passage* removes
 both. Cancelling a picker leaves the text unchanged. This does not automatically
 add an uncited source to the printed bibliography.
 
+**Reviewing AI passages.** Put the cursor inside an AI passage and choose
+*Authorship: Mark AI Passage as Reviewed…* or *Mark AI Passage as Revised…*.
+Choose the reviewer: the document owner is offered first, followed by configured
+human co-authors. Reviewed means read and accepted, with at most minor edits;
+Revised means edited but still based on the AI text. Both retain AI attribution.
+
+Current reviews soften the AI tint and add a bar in the reviewer's colour. The
+editor shows the status and name beside the opening marker and on hover. In the
+PDF, a single bar means Reviewed and a double bar means Revised; the authorship
+summary includes a reviewer legend. `\AuthorshipReviewLegend` prints the legend
+on its own. Bars mark affected lines, including lines shared with other text;
+very narrow margins or gutters may need layout adjustment.
+
+A readable `% authorship-review: {...}` comment stores the reviewer, state,
+colour and a fingerprint of the passage. Editing the source makes the review
+stale: the original AI colour returns, with “Changed since review” in the editor
+and a short bar in the PDF. Re-run the review command to confirm the updated text.
+Changes to external macro definitions or included files are not detected by this
+fingerprint. Save the document before comparing editor and PDF review states.
+
+*Remove AI Passage Review* removes the review only. *Unmark Passage* removes the
+AI markers and review together when you consider the text fully rewritten.
+Reviewer names/colours are snapshots; later owner changes do not rewrite them.
+Hidden mode and pdfLaTeX omit review display. Update both package files for PDF
+support; old packages ignore these comments safely. Review does not certify
+factual accuracy or change the AI-origin word/character totals.
+
 **Making a passage yours.** Once you've rewritten a Claude passage enough, put the cursor inside it, right-click → *Unmark Passage*.
 The two marker lines are removed and the text stays as it is.
 

@@ -6,6 +6,7 @@ const path = require('path');
 const M = require('./markers');
 const T = require('./texinstall');
 const R = require('./references');
+const V = require('./reviews');
 
 /** @typedef {{label: string, kind: import('./markers').AuthorKind, color: string, key: string}} Author */
 
@@ -141,14 +142,17 @@ function resolveColor(/** @type {string} */ key, /** @type {Map<string, number[]
   return authorFor(key).color;
 }
 
-function decorationFor(/** @type {string} */ key, /** @type {string} */ color) {
-  const id = `${key}|${color}`;
+function decorationFor(/** @type {string} */ key, /** @type {string} */ color, /** @type {{review:import('./reviews').Review, stale:boolean} | undefined} */ review) {
+  const id = `${key}|${color}|${JSON.stringify(review)}`;
   let d = authorDecorations.get(id);
   if (!d) {
     const alpha = /** @type {number} */ (cfg().get('backgroundOpacity')) ?? 0.14;
     d = vscode.window.createTextEditorDecorationType({
       isWholeLine: true,
-      backgroundColor: tint(color, alpha),
+      backgroundColor: tint(color, review && !review.stale ? alpha * 0.4 : alpha),
+      borderWidth: review ? '0 0 0 3px' : undefined,
+      borderStyle: review?.stale ? 'dashed' : 'solid',
+      borderColor: review?.review.color === '#000000' ? new vscode.ThemeColor('editor.foreground') : review?.review.color,
       overviewRulerColor: tint(color, 0.8),
       overviewRulerLane: vscode.OverviewRulerLane.Left,
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -182,8 +186,10 @@ function decorate(editor, used) {
   const lines = docLines(doc);
   const parsed = M.parseDocument(lines);
   const maps = colorMapsFor(doc, lines);
+  const reviewInfo = V.collect(lines,parsed);
+  const styles = new Map();
 
-  /** @type {Map<string, vscode.Range[]>} */
+  /** @type {Map<string, vscode.DecorationOptions[]>} */
   const byAuthor = new Map();
   /** @type {vscode.Range[]} */
   const markerRanges = [];
@@ -191,14 +197,22 @@ function decorate(editor, used) {
     const key = parsed.lineAuthor[i];
     if (parsed.isMarker[i]) markerRanges.push(doc.lineAt(i).range);
     if (!key) continue;
-    if (!byAuthor.has(key)) byAuthor.set(key, []);
-    /** @type {vscode.Range[]} */ (byAuthor.get(key)).push(new vscode.Range(i, 0, i, 0));
+    const block = M.blockAt(parsed,i);
+    const review = block ? reviewInfo.reviews.get(block.openLine) : undefined;
+    const id = key + '|' + (review ? JSON.stringify(review) : '');
+    styles.set(id,{key,review});
+    if (!byAuthor.has(id)) byAuthor.set(id, []);
+    const label = review ? `${review.stale ? 'Changed since review' : review.review.status === 'revised' ? 'Revised' : 'Reviewed'} · ${review.review.by} (AI origin retained)` : undefined;
+    const option = {range: doc.lineAt(i).range, hoverMessage:label,
+      renderOptions: review && block && i === block.openLine ? {after:{contentText:'  ' + label,color:review.review.color === '#000000' ? new vscode.ThemeColor('editor.foreground') : review.review.color}} : undefined};
+    /** @type {vscode.DecorationOptions[]} */ (byAuthor.get(id)).push(option);
   }
-  /** @type {Map<vscode.TextEditorDecorationType, vscode.Range[]>} */
+  /** @type {Map<vscode.TextEditorDecorationType, vscode.DecorationOptions[]>} */
   const wanted = new Map();
   if (enabled) {
     for (const [key, ranges] of byAuthor) {
-      const d = decorationFor(key, resolveColor(key, maps));
+      const style = styles.get(key);
+      const d = decorationFor(style.key, resolveColor(style.key, maps), style.review);
       wanted.set(d, ranges);
       used.add(d);
     }
@@ -206,7 +220,7 @@ function decorate(editor, used) {
   for (const d of authorDecorations.values()) editor.setDecorations(d, wanted.get(d) || []);
   editor.setDecorations(getMarkerDecoration(), enabled ? markerRanges : []);
 
-  diagnostics.set(doc.uri, parsed.problems.map(p => {
+  diagnostics.set(doc.uri, [...parsed.problems,...reviewInfo.problems].map(p => {
     const d = new vscode.Diagnostic(doc.lineAt(p.line).range, p.message, vscode.DiagnosticSeverity.Warning);
     d.source = 'authorship';
     return d;
@@ -311,7 +325,7 @@ function safeRange(doc, range) {
   const end = range.end.character === 0 && range.end.line > range.start.line ? range.end.line - 1 : range.end.line;
   for (let i = range.start.line; i <= end; i++) {
     if (verbatimGuard(doc, i)) return false;
-    if (M.parseMarkerLine(lines[i]) || M.isSourceComment(lines[i]) || /\\(?:begin|end)\{(?:verbatim|Verbatim|lstlisting|minted|comment|alltt|filecontents)\*?\}/.test(lines[i]) || /\\(?:verb\*?|url)\b/.test(lines[i])) {
+    if (M.parseMarkerLine(lines[i]) || M.isSourceComment(lines[i]) || V.isReview(lines[i]) || /\\(?:begin|end)\{(?:verbatim|Verbatim|lstlisting|minted|comment|alltt|filecontents)\*?\}/.test(lines[i]) || /\\(?:verb\*?|url)\b/.test(lines[i])) {
       vscode.window.showWarningMessage('Authorship: select passage text without marker lines or verbatim commands.');
       return false;
     }
@@ -375,6 +389,34 @@ async function cmdAssociateSource() {
   });
 }
 
+/** @param {'reviewed'|'revised'|'remove'} status */
+async function cmdReview(status) {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !isTex(editor.document)) return;
+  const doc=editor.document, version=doc.version, lines=docLines(doc);
+  const parsed=M.parseDocument(lines), block=M.blockAt(parsed,editor.selection.active.line);
+  if (!block || block.kind!=='ai' || block.closeLine<0 || parsed.problems.some(p=>p.line>=block.openLine && p.line<=block.closeLine)) {
+    vscode.window.showInformationMessage('Authorship: place the cursor inside a correctly closed AI passage.');return;
+  }
+  const line=block.openLine+1, hasReview=V.isReview(lines[line] || '');
+  let replacement='';
+  if (status!=='remove') {
+    const owner=ownerFor(doc), maps=colorMapsFor(doc,lines);
+    const reviewers=[{label:owner,description:'Document owner (default)',key:'@'+owner}];
+    for (const a of authorChoices(doc)) if (a.kind==='human' && !reviewers.some(r=>r.label===a.label)) reviewers.push({label:a.label,description:'Co-author',key:a.key});
+    const reviewer=await vscode.window.showQuickPick(reviewers,{title:`Mark AI passage as ${status}`,placeHolder:'Who reviewed this passage?'});
+    if (!reviewer || !currentDocument(editor,version)) return;
+    const configured=M.lookupColor(maps[0],reviewer.key) || maps.slice(1).map(m=>M.lookupColor(m,reviewer.key)).find(Boolean);
+    const color=configured ? M.formatColor(configured,'hex') : reviewer.label===owner ? '#000000' : resolveColor(reviewer.key,maps);
+    replacement=V.comment({version:1,status,by:reviewer.label,color:M.formatColor(M.parseColor(color) || [0,0,0],'hex'),hash:V.fingerprint(lines,block)})+eolOf(doc);
+  }
+  if (!currentDocument(editor,version)) return;
+  await editor.edit(eb=>{
+    if (hasReview) eb.replace(doc.lineAt(line).rangeIncludingLineBreak,replacement);
+    else if (replacement) eb.insert(new vscode.Position(line,0),replacement);
+  });
+}
+
 async function cmdUnmark() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
@@ -387,6 +429,7 @@ async function cmdUnmark() {
   await editor.edit(eb => {
     if (b.closeLine !== -1) eb.delete(fullLine(b.closeLine));
     if (b.kind === 'reference' && b.openLine + 1 < doc.lineCount && M.isSourceComment(doc.lineAt(b.openLine + 1).text)) eb.delete(fullLine(b.openLine + 1));
+    if (b.kind === 'ai' && b.openLine + 1 < doc.lineCount && V.isReview(doc.lineAt(b.openLine + 1).text)) eb.delete(fullLine(b.openLine + 1));
     eb.delete(fullLine(b.openLine));
   });
 }
@@ -533,6 +576,9 @@ function activate(context) {
     vscode.commands.registerCommand('texAuthorship.markSelection', cmdMarkSelection),
     vscode.commands.registerCommand('texAuthorship.unmark', cmdUnmark),
     vscode.commands.registerCommand('texAuthorship.associateReference', cmdAssociateSource),
+    vscode.commands.registerCommand('texAuthorship.reviewed', () => cmdReview('reviewed')),
+    vscode.commands.registerCommand('texAuthorship.revised', () => cmdReview('revised')),
+    vscode.commands.registerCommand('texAuthorship.clearReview', () => cmdReview('remove')),
     vscode.commands.registerCommand('texAuthorship.showStats', cmdStats),
     vscode.commands.registerCommand('texAuthorship.toggleHighlight', cmdToggle),
     vscode.commands.registerCommand('texAuthorship.copyLatexPackage', () => cmdCopyPackage(context)),

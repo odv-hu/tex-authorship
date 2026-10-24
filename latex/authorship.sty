@@ -28,6 +28,7 @@
 % Harmless fallbacks, so documents and .aux files work in every mode.
 \providecommand\AuthorshipSetSummary[1]{}
 \providecommand\AuthorshipSummary{}
+\providecommand\AuthorshipReviewLegend{}
 \providecommand\AuthorshipSummaryFullWidth[1][Authorship summary]{}
 \providecommand\AuthorshipColor[2]{}
 \providecommand\AuthorshipGradient[2]{}
@@ -116,6 +117,7 @@
 \renewcommand\AuthorshipSetSummary[1]{%
   \directlua{authorship.previous = "\luaescapestring{\detokenize{#1}}"}}
 \renewcommand\AuthorshipSummary{\directlua{authorship.typeset_summary()}}
+\renewcommand\AuthorshipReviewLegend{\directlua{authorship.typeset_review_legend()}}
 
 % Full-width summary: keep heading and table together in document flow.
 % Two-column output requires a fresh page for full width.

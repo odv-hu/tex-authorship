@@ -111,7 +111,68 @@ end
 ----------------------------------------------------------------------
 -- reading: turn marker comment lines into \AuthorshipOpen / \AuthorshipClose
 
+-- Review metadata is opt-in per passage. Validate against the saved source before
+-- typesetting, so even a passage spanning pages cannot briefly appear reviewed.
+local review_records, source_cache = {}, {}
+local function review_comment(line)
+  local value = line:match("^%s*%%%s*authorship%-review:%s*(.*)$")
+  return value and value:gsub("%s+$", "")
+end
+local function source_lines(filename)
+  if source_cache[filename] then return source_cache[filename] end
+  local f = io.open(filename, "rb")
+  if not f then return nil end
+  local text = f:read("*a"); f:close()
+  local lines = {}
+  for line in (text .. "\n"):gmatch("(.-)\n") do lines[#lines+1] = line:gsub("\r$", "") end
+  source_cache[filename] = lines
+  return lines
+end
+local function checked_review(json, line, filename)
+  local ok = pcall(require, "lualibs")
+  if not ok or not utilities or not utilities.json or not sha2 then return nil end
+  local parsed, r = pcall(utilities.json.tolua, json)
+  if not parsed or type(r) ~= "table" or r.version ~= 1 or
+      (r.status ~= "reviewed" and r.status ~= "revised") or type(r.by) ~= "string" or
+      r.by:match("^%s*$") or r.by:find("[\r\n]") or type(r.color) ~= "string" or
+      not r.color:match("^#%x%x%x%x%x%x$") or type(r.hash) ~= "string" or
+      #r.hash ~= 64 or not r.hash:match("^[0-9a-f]+$") then return nil end
+  r.stale = true
+  local lines = source_lines(filename)
+  if not lines or not lines[line] or review_comment(lines[line]) ~= json then return r end
+  local label = (lines[line-1] or ""):match("^%s*%%%[&([^%]]+)%]%s*$")
+  if not label then return nil end
+  local key = "&" .. label:gsub("^%s+", ""):gsub("%s+$", "")
+  local keys, body = {key}, {}
+  for j=line+1,#lines do
+    local close,prefix,name = lines[j]:match("^%s*%%%[(/?)([@&%*])([^%]]+)%]%s*$")
+    if prefix then
+      local k = prefix .. name:gsub("^%s+", ""):gsub("%s+$", "")
+      if close == "/" then
+        if keys[#keys] ~= k then return r end
+        keys[#keys] = nil
+        if #keys == 0 then
+          r.stale = to_hex(sha2.digest256(key .. "\n" .. table.concat(body,"\n"))) ~= r.hash
+          return r
+        end
+      else keys[#keys+1] = k end
+    end
+    if not review_comment(lines[j]) then body[#body+1] = lines[j] end
+  end
+  return r
+end
+
 local function rewrite_line(line)
+  local json = review_comment(line)
+  if json then
+    local r = checked_review(json, tex.inputlineno, status.filename or "")
+    if r then
+      review_records[#review_records+1] = r
+      return "\\directlua{authorship.set_review(" .. #review_records .. ")}%"
+    end
+    warn("invalid review metadata ignored")
+    return nil
+  end
   local close, prefix, label = line:match("^%s*%%%[(/?)([@&%*])([^%]]+)%]%s*$")
   if not prefix then return nil end
   label = label:gsub("^%s+", ""):gsub("%s+$", "")
@@ -135,6 +196,15 @@ function M.open(hex)
   instances[id] = { author = a, n = 0 }
   stack[#stack + 1] = id
   set_current()
+end
+
+function M.set_review(id)
+  local inst = instances[stack[#stack]]
+  if inst and inst.author.kind == "ai" then
+    inst.review = review_records[id]
+    inst.review.used = true
+    if inst.review.stale then warn("AI passage changed since " .. inst.review.status .. " by " .. inst.review.by) end
+  end
 end
 
 function M.close(hex)
@@ -207,9 +277,49 @@ local function colour_for(n)
   if style.stops then
     local step = math.floor(inst.n / GRADIENT_STEP)
     inst.n = inst.n + 1
-    return id .. ":" .. step, gradient_colour(step * GRADIENT_STEP, style.stops)
+    local c = gradient_colour(step * GRADIENT_STEP, style.stops)
+    if inst.review and not inst.review.stale then c = lerp(c, {1,1,1}, 0.55) end
+    return id .. ":" .. step, c
   end
+  if inst.review and not inst.review.stale then return id .. ":review", lerp(style.solid, {1,1,1}, 0.55) end
   return a.key, style.solid
+end
+
+-- Zero-net-width rules in the left margin of each affected text line. Added
+-- after counting/colouring, so the bars themselves never enter statistics.
+local function review_bars(line)
+  local found, ordered = {}, {}
+  local function scan(head)
+    for n in node.traverse(head) do
+      if n.id == GLYPH then
+        local inst = instances[get_attribute(n,attr)]
+        local r = inst and inst.review
+        if r then
+          local key = r.by .. r.color .. r.status .. tostring(r.stale)
+          if not found[key] then found[key] = true; ordered[#ordered+1] = r end
+        end
+      elseif (n.id == HLIST or n.id == VLIST) and n.head then scan(n.head) end
+    end
+  end
+  scan(line.head)
+  for i,r in ipairs(ordered) do
+    local c = {}
+    for h in r.color:gmatch("%x%x") do c[#c+1] = tonumber(h,16)/255 end
+    for bar=1,(r.status == "revised" and not r.stale and 2 or 1) do
+      local offset, width = tex.sp((3+i*5+bar*2) .. "pt"), tex.sp("1pt")
+      local first = line.head
+      local back = node.new("kern"); back.kern = -offset
+      local rule = node.new("rule"); rule.width = width
+      rule.height = r.stale and tex.sp("2pt") or line.height
+      rule.depth = r.stale and 0 or line.depth
+      local forward = node.new("kern"); forward.kern = offset-width
+      line.head = node.insert_before(line.head,first,back)
+      line.head = node.insert_before(line.head,first,push(c))
+      line.head = node.insert_before(line.head,first,rule)
+      line.head = node.insert_before(line.head,first,pop())
+      line.head = node.insert_before(line.head,first,forward)
+    end
+  end
 end
 
 local function process(head)
@@ -236,6 +346,7 @@ local function process(head)
       if current then head = node.insert_before(head, n, pop()); current = nil end
       if carry then in_word, word_counted, carry = true, carry_counted, false else end_word() end
       if n.head then n.head = process(n.head) end
+      if id == HLIST and n.subtype == 1 and n.head then review_bars(n) end
       last_content = id
     end
     n = n.next
@@ -305,6 +416,25 @@ local function pct(n, total)
   return string.format("%.1f\\,\\%%", 100 * n / total)
 end
 
+function M.typeset_review_legend()
+  local seen, rows = {}, {}
+  for _,r in ipairs(review_records) do
+    local key = r.by .. r.status .. r.color .. tostring(r.stale)
+    if r.used and not seen[key] then seen[key] = true; rows[#rows+1] = r end
+  end
+  if #rows == 0 then return end
+  tex.sprint("\\par\\begingroup\\attribute" .. attr .. "=" .. EXCLUDED .. "\\relax\\small\\medskip\\noindent AI review legend (origin unchanged):\\par")
+  for _,r in ipairs(rows) do
+    local c = {}
+    for h in r.color:gmatch("%x%x") do c[#c+1] = string.format("%.3f",tonumber(h,16)/255) end
+    tex.sprint("\\noindent\\AuthorshipSwatchBox{\\AuthorshipBand{1}{" .. table.concat(c," ") .. "}}\\enspace ")
+    local label = r.stale and "Changed since review (short bar): " or r.status == "revised" and "Revised (double bar): " or "Reviewed (single bar): "
+    tex.sprint(-2,label .. r.by)
+    tex.sprint("\\par")
+  end
+  tex.sprint("\\endgroup")
+end
+
 function M.typeset_summary(full_width)
   local prev = M.previous
   if not prev or prev == "" then
@@ -343,6 +473,7 @@ function M.typeset_summary(full_width)
   end
   tex.sprint(string.format("\\hline&Total&\\textbf{%s}&%s&\\textbf{%s}&%s\\\\", group_digits(tc), pct(tc, tc), words(tw), wpct(tw)))
   tex.sprint((full_width and "\\end{tabular*}" or "\\end{tabular}") .. "\\endgroup")
+  M.typeset_review_legend()
 end
 
 ----------------------------------------------------------------------
