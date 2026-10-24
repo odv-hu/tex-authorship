@@ -305,7 +305,7 @@ local function pct(n, total)
   return string.format("%.1f\\,\\%%", 100 * n / total)
 end
 
-function M.typeset_summary()
+function M.typeset_summary(full_width)
   local prev = M.previous
   if not prev or prev == "" then
     tex.sprint("\\textit{(Authorship summary appears after the next LuaLaTeX run.)}")
@@ -326,7 +326,11 @@ function M.typeset_summary()
   local function wpct(n) return have_words and pct(n, tw) or "--" end
   -- the table itself is left out of the counts, so they don't drift from run to run
   tex.sprint("\\begingroup\\attribute" .. attr .. "=" .. EXCLUDED .. "\\relax")
-  tex.sprint("\\begin{tabular}{@{}l@{\\hspace{0.5em}}l@{\\hspace{1.5em}}rr@{\\hspace{1.5em}}rr@{}}")
+  if full_width then
+    tex.sprint("\\begin{tabular*}{\\linewidth}{@{}l@{\\hspace{0.5em}}l@{\\extracolsep{\\fill}}rrrr@{}}")
+  else
+    tex.sprint("\\begin{tabular}{@{}l@{\\hspace{0.5em}}l@{\\hspace{1.5em}}rr@{\\hspace{1.5em}}rr@{}}")
+  end
   tex.sprint("\\multicolumn{2}{@{}l@{\\hspace{1.5em}}}{Author}&Characters&\\%&Words&\\%\\\\\\hline")
   for _, r in ipairs(rows) do
     tex.sprint(swatch(r.key) .. "&")
@@ -338,7 +342,7 @@ function M.typeset_summary()
     tex.sprint(string.format("&%s&%s&%s&%s\\\\", group_digits(r.c), pct(r.c, tc), words(r.w), wpct(r.w)))
   end
   tex.sprint(string.format("\\hline&Total&\\textbf{%s}&%s&\\textbf{%s}&%s\\\\", group_digits(tc), pct(tc, tc), words(tw), wpct(tw)))
-  tex.sprint("\\end{tabular}\\endgroup")
+  tex.sprint((full_width and "\\end{tabular*}" or "\\end{tabular}") .. "\\endgroup")
 end
 
 ----------------------------------------------------------------------

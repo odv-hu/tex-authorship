@@ -125,6 +125,22 @@ A word is a run of characters between spaces, and a hyphenated word split across
 Headings, captions, running heads and the bibliography count too, so "Mine" is slightly generous.
 The summary table itself is left out.
 
+For a summary spanning the text width directly after the references, replace
+your summary heading and `\AuthorshipSummary` with:
+
+```latex
+\AuthorshipSummaryFullWidth % immediately before \end{document}, after references
+```
+
+This includes the heading “Authorship summary”; use
+`\AuthorshipSummaryFullWidth[Your heading]` to change it, or `[]` to omit it.
+The heading and table are excluded from counts. The block appears where called;
+if it does not fit, it moves to the next page. Two-column documents switch to a
+fresh single-column page.
+Use it at document level, outside lists, boxes, floats and `multicols`.
+The table must fit on one page. Hidden mode and pdfLaTeX omit it entirely.
+The existing `\AuthorshipSummary` keeps its inline layout.
+
 ## Settings
 
 | Setting | Default | |

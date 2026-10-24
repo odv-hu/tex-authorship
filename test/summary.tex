@@ -1,0 +1,16 @@
+% Compile twice. Override class/options/summary from the command line for variants.
+\providecommand\SummaryClassOptions{}
+\providecommand\SummaryPackageOptions{show}
+\documentclass[\SummaryClassOptions]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage[\SummaryPackageOptions]{authorship}
+\providecommand\SummaryCommand{\AuthorshipSummaryFullWidth}
+\AuthorshipOwner{Example Writer}
+\begin{document}
+Owner text before the attributed passage.
+%[&AI: ChatGPT]
+Attributed text with a footnote\footnote{A short attributed note.}.
+%[/&AI: ChatGPT]
+Owner text after the passage.
+\SummaryCommand
+\end{document}

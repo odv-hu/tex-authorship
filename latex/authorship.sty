@@ -28,6 +28,7 @@
 % Harmless fallbacks, so documents and .aux files work in every mode.
 \providecommand\AuthorshipSetSummary[1]{}
 \providecommand\AuthorshipSummary{}
+\providecommand\AuthorshipSummaryFullWidth[1][Authorship summary]{}
 \providecommand\AuthorshipColor[2]{}
 \providecommand\AuthorshipGradient[2]{}
 \providecommand\AuthorshipCitationColor[1]{}
@@ -115,6 +116,21 @@
 \renewcommand\AuthorshipSetSummary[1]{%
   \directlua{authorship.previous = "\luaescapestring{\detokenize{#1}}"}}
 \renewcommand\AuthorshipSummary{\directlua{authorship.typeset_summary()}}
+
+% Full-width summary: keep heading and table together in document flow.
+% Two-column output requires a fresh page for full width.
+\renewcommand\AuthorshipSummaryFullWidth[1][Authorship summary]{%
+  \par
+  \if@twocolumn\onecolumn\fi
+  \addvspace{\medskipamount}%
+  \noindent\begin{minipage}{\textwidth}%
+    \authorship@attr="7FFFFF00\relax
+    \normalfont\normalsize
+    \if\relax\detokenize{#1}\relax\else
+      {\itshape #1\par}\medskip
+    \fi
+    \noindent\directlua{authorship.typeset_summary(true)}%
+  \end{minipage}\par}
 
 % Legend squares in the summary: a thin black frame around one or more colour bands.
 \newdimen\AuthorshipSwatchSize \AuthorshipSwatchSize=0.72em
