@@ -8,11 +8,14 @@ abstract: >-
   The syntax is a simple pair of comment lines around each passage.
   This way it travels with the source through formatters, undo and git.
   Marked passages are tinted in the editor and coloured in a draft PDF.
+  Developed with AI coding assistance (Claude); the commit history records
+  which changes were made with it.
 authors:
   - family-names: "Fürtön"
     given-names: "Balázs"
     orcid: "https://orcid.org/0000-0002-0073-6208"
 license: MIT
+doi: "10.5281/zenodo.23607060"
 repository-code: "https://github.com/odv-hu/tex-authorship"
 keywords:
   - LaTeX
