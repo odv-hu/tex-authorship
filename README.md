@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+<p align="center"><a href="https://doi.org/10.5281/zenodo.23607060"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.23607060.svg"></a></p>
+
 ```The tool is built for our own writing, it is maintained as we need it.```
 
 Authorship tracking for LaTeX in VS Code.
@@ -12,6 +14,7 @@ Mark text you paste in as written by your AI assistant (Claude, ChatGPT, Gemini,
 Marked passages get a tinted background in the editor, and a coloured LuaLaTeX draft PDF shows the same split.
 Your own text stays plain.
 Inspired by iA Writer's Authorship feature; an independent project, not affiliated with iA.
+Developed by Balázs Fürtön with AI coding assistance (Claude); the commit history records which changes were made with it.
 
 The record is a pair of comment lines around each passage, so it travels with the file:
 formatters, undo, git and other editors all keep it intact, and LaTeX ignores it.
@@ -180,9 +183,8 @@ npm run package     # build the .vsix
 
 Open the folder in VS Code and press F5 to try it in a development window with `examples/sample.tex`.
 
-**Releasing.** Push a tag like `v0.1.9` (in Fork: right-click the commit → *New Tag…*, tick *Push*).
-The [release workflow](.github/workflows/release.yml) runs the tests, builds the `.vsix` and the LaTeX zip, creates the GitHub release with notes from the commit messages since the previous tag, and publishes to the VS Code Marketplace.
-The tag sets the version; odd minor versions (0.1.x) go out as pre-releases.
-To repeat a release, run the workflow by hand from the Actions tab with the tag name.
-
 Design decisions are recorded in [`docs/adr/`](docs/adr/), and likely next features in [`docs/roadmap.md`](docs/roadmap.md).
+
+## Citing
+
+If you use TeX Authorship in your work, cite it via Zenodo: [10.5281/zenodo.23607060](https://doi.org/10.5281/zenodo.23607060) always resolves to the latest version, and each release has its own DOI on the Zenodo record (version 0.1.13: [10.5281/zenodo.23607061](https://doi.org/10.5281/zenodo.23607061)). GitHub's "Cite this repository" button gives the same metadata from `CITATION.cff`.
