@@ -13,6 +13,13 @@ async function run() {
  const dir=process.env.AUTHORSHIP_TEST_WORKSPACE;
  assert.ok(dir);assert.equal(vscode.workspace.getConfiguration('texAuthorship').get('installLatexPackage'),false);
  const extension=vscode.extensions.getExtension('odv-hu.tex-authorship');assert.ok(extension);await extension.activate();
+ const registered=new Set(await vscode.commands.getCommands(true));
+ const manifest=require('../../package.json');
+ const declared=new Set(manifest.contributes.commands.map(c=>c.command));
+ for(const item of manifest.contributes.menus['editor/context']) {
+  assert.ok(declared.has(item.command), 'Context menu command missing declaration: '+item.command);
+  assert.ok(registered.has(item.command), 'Context menu command missing handler: '+item.command);
+ }
  const uri=vscode.Uri.file(path.join(dir,'main.tex'));
  const text='%[&AI: ChatGPT]\n'+('Long wrapped AI passage. '.repeat(25))+'\n%[/&AI: ChatGPT]\n';
  await vscode.workspace.fs.writeFile(uri,Buffer.from(text));

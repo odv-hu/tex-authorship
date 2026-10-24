@@ -2,7 +2,7 @@
   "name": "tex-authorship",
   "displayName": "TeX Authorship",
   "description": "Authorship tracking for LaTeX: mark pasted text as AI, reference or co-author with comment markers, see it tinted in the editor and coloured in a LuaLaTeX draft PDF. Inspired by iA Writer's Authorship.",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "publisher": "odv-hu",
   "license": "MIT",
   "repository": {
@@ -89,22 +89,39 @@
         "command": "texAuthorship.clearReview",
         "title": "Remove AI Passage Review",
         "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.clipboardCut",
+        "title": "Cut",
+        "category": "Authorship",
+        "enablement": "!editorReadonly"
+      },
+      {
+        "command": "texAuthorship.clipboardCopy",
+        "title": "Copy",
+        "category": "Authorship"
+      },
+      {
+        "command": "texAuthorship.clipboardPaste",
+        "title": "Paste",
+        "category": "Authorship",
+        "enablement": "!editorReadonly"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "editor.action.clipboardCutAction",
+          "command": "texAuthorship.clipboardCut",
           "when": "resourceLangId == latex || resourceLangId == tex",
           "group": "navigation@-100"
         },
         {
-          "command": "editor.action.clipboardCopyAction",
+          "command": "texAuthorship.clipboardCopy",
           "when": "resourceLangId == latex || resourceLangId == tex",
           "group": "navigation@-99"
         },
         {
-          "command": "editor.action.clipboardPasteAction",
+          "command": "texAuthorship.clipboardPaste",
           "when": "resourceLangId == latex || resourceLangId == tex",
           "group": "navigation@-98"
         },
@@ -142,6 +159,20 @@
           "command": "texAuthorship.clearReview",
           "when": "resourceLangId == latex || resourceLangId == tex",
           "group": "navigation@-84"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "texAuthorship.clipboardCut",
+          "when": "false"
+        },
+        {
+          "command": "texAuthorship.clipboardCopy",
+          "when": "false"
+        },
+        {
+          "command": "texAuthorship.clipboardPaste",
+          "when": "false"
         }
       ]
     },

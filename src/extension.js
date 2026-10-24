@@ -569,6 +569,10 @@ function activate(context) {
       pasteMimeTypes: ['text/plain'],
     }),
     vscode.languages.registerColorProvider(selector, colorProvider),
+    // Menu aliases delegate to native clipboard handling, including paste providers.
+    vscode.commands.registerCommand('texAuthorship.clipboardCut', () => vscode.commands.executeCommand('editor.action.clipboardCutAction')),
+    vscode.commands.registerCommand('texAuthorship.clipboardCopy', () => vscode.commands.executeCommand('editor.action.clipboardCopyAction')),
+    vscode.commands.registerCommand('texAuthorship.clipboardPaste', () => vscode.commands.executeCommand('editor.action.clipboardPasteAction')),
     vscode.commands.registerCommand('texAuthorship.pasteAs', cmdPasteAs),
     vscode.commands.registerCommand('texAuthorship.markSelection', cmdMarkSelection),
     vscode.commands.registerCommand('texAuthorship.unmark', cmdUnmark),
