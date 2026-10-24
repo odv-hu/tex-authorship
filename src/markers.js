@@ -42,6 +42,18 @@ function openTag(key) { return `%[${key}]`; }
 /** @param {string} key */
 function closeTag(key) { return `%[/${key}]`; }
 
+/** @param {string} key */
+function sourceComment(key) { return '% authorship-source: ' + JSON.stringify({version: 1, citekey: key}); }
+/** @param {string} line */
+function isSourceComment(line) { return /^\s*%\s*authorship-source:/.test(line); }
+/** @param {string} line @returns {string | null} */
+function sourceKey(line) {
+  try {
+    const data = JSON.parse(line.replace(/^\s*%\s*authorship-source:\s*/, ''));
+    return data.version === 1 && typeof data.citekey === 'string' && data.citekey.trim() && !/[\r\n]/.test(data.citekey) ? data.citekey : null;
+  } catch { return null; }
+}
+
 /**
  * @typedef {Object} Block
  * @property {string} key       author key, e.g. "&AI: Claude"
@@ -112,6 +124,12 @@ function parseDocument(lines) {
   }
   for (const b of stack) {
     problems.push({ line: b.openLine, message: `${openTag(b.key)} is never closed.` });
+  }
+  for (let i = 0; i < lines.length; i++) {
+    if (!isSourceComment(lines[i])) continue;
+    const preceding = i > 0 ? parseMarkerLine(lines[i - 1]) : null;
+    if (!preceding || preceding.close || preceding.kind !== 'reference') problems.push({line: i, message: 'Source metadata must immediately follow an opening reference marker.'});
+    if (!sourceKey(lines[i])) problems.push({line: i, message: 'Invalid or unsupported reference source metadata.'});
   }
   return { blocks, lineAuthor, isMarker, problems };
 }
@@ -344,4 +362,5 @@ module.exports = {
   MARKER_RE, PREFIX_KIND, KIND_PREFIX,
   parseMarkerLine, parseDocument, blockAt, wrapText, countByAuthor, insideVerbatim,
   authorKey, openTag, closeTag, stripComment,
+  sourceComment, sourceKey, isSourceComment,
 };

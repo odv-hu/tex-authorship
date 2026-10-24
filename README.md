@@ -73,6 +73,38 @@ To choose before pasting, use **⌘⌥V** (Ctrl+Alt+V) or right-click → *Paste
 
 **Existing text.** Select it, right-click → *Mark Selection as…*.
 
+**Reference sources.** When you choose a reference author in *Mark Selection as…*
+or explicit *Paste as…*, a second picker searches citation keys, authors, years
+and titles from the document's bibliography. Choose an entry, or choose
+*Reference without a source*. Selecting a source **does not insert a citation**;
+add `\cite{key}` separately when needed.
+
+The extension follows `% !TeX root = ../main.tex`, or discovers the main file
+through literal `\input{...}` and `\include{...}` links. It reads
+`\bibliography{one,two}` and `\addbibresource[options]{file.bib}` from that
+project, including unsaved editor buffers. Paths resolve from the main file's
+folder. If several roots match, choose one. For macros, custom build directories
+or missing declarations, use *Choose bibliography files…* in the picker.
+Manual choices apply to that selection only. Missing files and duplicate keys
+are shown under *Bibliography warnings*; duplicate keys cannot be selected.
+
+After the normal paste-options button's *Paste as Reference*, put the cursor
+inside the passage and use **Authorship: Associate Reference Source…** from the
+context menu or Command Palette. This also changes or removes an existing source.
+Source information stays in a readable comment alongside the original markers:
+
+```latex
+%[*Reference]
+% authorship-source: {"version":1,"citekey":"smith2024"}
+Text from the source.
+%[/*Reference]
+```
+
+Reference colours and attribution totals keep their existing meaning. Removing
+an association leaves the reference attribution intact; *Unmark Passage* removes
+both. Cancelling a picker leaves the text unchanged. This does not automatically
+add an uncited source to the printed bibliography.
+
 **Making a passage yours.** Once you've rewritten a Claude passage enough, put the cursor inside it, right-click → *Unmark Passage*.
 The two marker lines are removed and the text stays as it is.
 

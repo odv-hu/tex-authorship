@@ -5,6 +5,7 @@ const vscode = require('vscode');
 const path = require('path');
 const M = require('./markers');
 const T = require('./texinstall');
+const R = require('./references');
 
 /** @typedef {{label: string, kind: import('./markers').AuthorKind, color: string, key: string}} Author */
 
@@ -295,35 +296,83 @@ function verbatimGuard(/** @type {vscode.TextDocument} */ doc, /** @type {number
 
 // ---------- commands ----------
 
+/** Refuse stale edits after an asynchronous picker. */
+function currentDocument(/** @type {vscode.TextEditor} */ editor, /** @type {number} */ version) {
+  if (editor.document.isClosed || editor.document.version !== version || vscode.window.activeTextEditor !== editor) {
+    vscode.window.showWarningMessage('Authorship: the document changed while choosing a source. Please select the passage again.');
+    return false;
+  }
+  return true;
+}
+
+/** @param {vscode.TextDocument} doc @param {vscode.Range} range */
+function safeRange(doc, range) {
+  const lines = docLines(doc);
+  const end = range.end.character === 0 && range.end.line > range.start.line ? range.end.line - 1 : range.end.line;
+  for (let i = range.start.line; i <= end; i++) {
+    if (verbatimGuard(doc, i)) return false;
+    if (M.parseMarkerLine(lines[i]) || M.isSourceComment(lines[i]) || /\\(?:begin|end)\{(?:verbatim|Verbatim|lstlisting|minted|comment|alltt|filecontents)\*?\}/.test(lines[i]) || /\\(?:verb\*?|url)\b/.test(lines[i])) {
+      vscode.window.showWarningMessage('Authorship: select passage text without marker lines or verbatim commands.');
+      return false;
+    }
+  }
+  return true;
+}
+
+/** @param {string} text @param {string | null} source @param {string} eol */
+function withSource(text, source, eol) { return source ? M.sourceComment(source) + eol + text : text; }
+
 async function cmdPasteAs() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
-  const doc = editor.document;
+  const doc = editor.document, version = doc.version;
+  const selections = [...editor.selections], sel = editor.selection;
   const text = await vscode.env.clipboard.readText();
   if (!text) { vscode.window.showInformationMessage('Authorship: the clipboard has no text.'); return; }
   const author = await pickAuthor(authorChoices(doc), 'Paste as…', ownerFor(doc));
-  if (author === undefined) return;
+  if (author === undefined || !currentDocument(editor, version)) return;
   if (author === null) {
-    await editor.edit(eb => { for (const sel of editor.selections) eb.replace(sel, text); });
+    await editor.edit(eb => { for (const selection of selections) eb.replace(selection, text); });
     return;
   }
-  if (editor.selections.length > 1) { vscode.window.showWarningMessage('Authorship: paste as an author works with a single cursor.'); return; }
-  const sel = editor.selection;
-  if (verbatimGuard(doc, sel.start.line)) return;
-  await editor.edit(eb => eb.replace(sel, wrappedFor(doc, sel, text, author.key)));
+  if (selections.length > 1) { vscode.window.showWarningMessage('Authorship: paste as an author works with a single cursor.'); return; }
+  if (!safeRange(doc, sel)) return;
+  const source = author.kind === 'reference' ? await R.pickSource(doc) : null;
+  if (source === undefined || !currentDocument(editor,version)) return;
+  await editor.edit(eb => eb.replace(sel, wrappedFor(doc, sel, withSource(text,source,eolOf(doc)), author.key)));
 }
 
 async function cmdMarkSelection() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
-  const doc = editor.document;
-  const sel = editor.selection;
+  const doc = editor.document, version = doc.version, sel = editor.selection;
+  if (editor.selections.length !== 1) { vscode.window.showWarningMessage('Authorship: mark a single selection at a time.'); return; }
   if (sel.isEmpty) { vscode.window.showInformationMessage('Authorship: select the text to mark first.'); return; }
-  if (verbatimGuard(doc, sel.start.line)) return;
-  const author = await pickAuthor(authorChoices(doc), 'Mark selection as…', null);
-  if (!author) return;
+  if (!safeRange(doc, sel)) return;
   const text = doc.getText(sel);
-  await editor.edit(eb => eb.replace(sel, wrappedFor(doc, sel, text, author.key)));
+  const author = await pickAuthor(authorChoices(doc), 'Mark selection as…', null);
+  if (!author || !currentDocument(editor, version)) return;
+  const source = author.kind === 'reference' ? await R.pickSource(doc) : null;
+  if (source === undefined || !currentDocument(editor,version)) return;
+  await editor.edit(eb => eb.replace(sel, wrappedFor(doc, sel, withSource(text,source,eolOf(doc)), author.key)));
+}
+
+async function cmdAssociateSource() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document, version = doc.version, lines = docLines(doc);
+  const block = M.blockAt(M.parseDocument(lines), editor.selection.active.line);
+  if (!block || block.kind !== 'reference' || block.closeLine < 0) {
+    vscode.window.showInformationMessage('Authorship: place the cursor inside a closed reference passage first.'); return;
+  }
+  const line = block.openLine + 1, hasSource = M.isSourceComment(lines[line] || '');
+  const source = await R.pickSource(doc, hasSource ? M.sourceKey(lines[line]) : null);
+  if (source === undefined || !currentDocument(editor,version)) return;
+  await editor.edit(eb => {
+    const replacement = source ? M.sourceComment(source) + eolOf(doc) : '';
+    if (hasSource) eb.replace(doc.lineAt(line).rangeIncludingLineBreak,replacement);
+    else if (source) eb.insert(new vscode.Position(line,0),replacement);
+  });
 }
 
 async function cmdUnmark() {
@@ -337,6 +386,7 @@ async function cmdUnmark() {
     i + 1 < doc.lineCount ? new vscode.Range(i, 0, i + 1, 0) : doc.lineAt(i).rangeIncludingLineBreak;
   await editor.edit(eb => {
     if (b.closeLine !== -1) eb.delete(fullLine(b.closeLine));
+    if (b.kind === 'reference' && b.openLine + 1 < doc.lineCount && M.isSourceComment(doc.lineAt(b.openLine + 1).text)) eb.delete(fullLine(b.openLine + 1));
     eb.delete(fullLine(b.openLine));
   });
 }
@@ -482,6 +532,7 @@ function activate(context) {
     vscode.commands.registerCommand('texAuthorship.pasteAs', cmdPasteAs),
     vscode.commands.registerCommand('texAuthorship.markSelection', cmdMarkSelection),
     vscode.commands.registerCommand('texAuthorship.unmark', cmdUnmark),
+    vscode.commands.registerCommand('texAuthorship.associateReference', cmdAssociateSource),
     vscode.commands.registerCommand('texAuthorship.showStats', cmdStats),
     vscode.commands.registerCommand('texAuthorship.toggleHighlight', cmdToggle),
     vscode.commands.registerCommand('texAuthorship.copyLatexPackage', () => cmdCopyPackage(context)),
