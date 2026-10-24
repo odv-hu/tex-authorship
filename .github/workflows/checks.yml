@@ -1,0 +1,82 @@
+name: Reliability checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact ref to validate for a release
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+      - run: npm run check:release
+      - run: python3 -B -m unittest discover -s test -p '*_test.py'
+      - run: git diff --check
+
+  extension-host:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        vscode: ['1.100.0', stable]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libasound2t64
+      - run: xvfb-run -a npm run test:integration
+        env:
+          VSCODE_TEST_VERSION: ${{ matrix.vscode }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: vscode-logs-${{ matrix.vscode }}
+          path: /tmp/authorship-vscode-*/user/logs/**
+
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test/pdf-requirements.txt
+      - run: sudo apt-get update && sudo apt-get install -y texlive-luatex texlive-latex-extra texlive-fonts-recommended poppler-utils
+      - run: python -m pip install -r test/pdf-requirements.txt
+      - run: python test/pdf-regression.py --output "$RUNNER_TEMP/pdf-regression"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdf-regression
+          path: |
+            ${{ runner.temp }}/pdf-regression/*.pdf
+            ${{ runner.temp }}/pdf-regression/*.png
+            ${{ runner.temp }}/pdf-regression/*.log
+            ${{ runner.temp }}/pdf-regression/*-build.txt

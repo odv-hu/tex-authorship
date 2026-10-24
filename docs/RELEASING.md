@@ -18,8 +18,13 @@ Use Node.js 22, as CI does:
 npm ci
 npm test
 npm run check
+npm run check:release
+npm run test:integration
+npm run test:pdf
 git diff --check
 ```
+
+See [TESTING.md](TESTING.md) for test dependencies and the manual visual checklist. Validate the intended tag with `npm run check:release -- vMAJOR.MINOR.PATCH` before tagging.
 
 Run relevant LuaLaTeX fixtures for changes under latex/. Review the actual rendered result and check hide mode. Do not continue packaging after a failed check without resolving or explicitly reporting the blocker.
 
@@ -42,7 +47,7 @@ Never finish with only a VSIX in /tmp or a same-version local test installation.
 
 ## 4. Inspect and deliver
 
-Open the VSIX as a ZIP and verify:
+Run `python3 scripts/verify-artifacts.py dist` against the intended source checkout, then review the packaged result. The automated inspection checks:
 
 - The archive is readable; extension/package.json has the requested version and publisher odv-hu.
 - extension.vsixmanifest has the matching version and no enabled pre-release flag.
@@ -58,9 +63,9 @@ Do not call the release published or installed merely because packaging succeede
 For a reproducible release, commit the version-aligned source and approved fixes, then build from that exact commit and create the matching vMAJOR.MINOR.PATCH tag. Do not move an existing release tag.
 If source changes after a candidate build, rebuild from the approved source before distributing it; obtain authorization before replacing an existing artifact.
 
-Pushing a release tag triggers the GitHub workflow. It creates or updates GitHub release assets and may publish to Marketplace when the configured publishing secret is available. Treat pushing such a tag or dispatching the workflow as a publishing action requiring explicit authorization.
-The workflow can replace existing assets, so do not rerun it against an existing release casually.
+Pushing a release tag triggers the GitHub workflow. It validates the tagged source, runs the reliability suite, inspects archives, creates new GitHub release assets and may publish to Marketplace when the configured publishing secret is available. Treat pushing such a tag or dispatching the workflow as a publishing action requiring explicit authorization.
+The workflow refuses to replace an existing GitHub release. If publication only partially succeeds (for example, GitHub succeeds but Marketplace fails), inspect the completed steps and request explicit recovery authorization; a blind rerun will stop.
 
 When the owner requests local installation, install the versioned dist/ VSIX and verify the installed version. Tell the owner to reload VS Code if the extension host still has the previous implementation loaded.
 
-Changing the workflow does not promote existing GitHub pre-releases or alter previously published VSIX files. The existing-release branch only uploads assets; it does not change release status. Promotion of an existing release is a separate, explicitly authorized action.
+Changing the workflow does not promote existing GitHub pre-releases or alter previously published VSIX files. Promotion of an existing release is a separate, explicitly authorized action.

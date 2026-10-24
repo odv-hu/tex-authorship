@@ -254,11 +254,15 @@ it works on LaTeX, keeps the record as comment lines inside the file (so formatt
 Shared agent instructions are in [AGENTS.md](AGENTS.md). For versioned artifacts and release preparation, follow [docs/RELEASING.md](docs/RELEASING.md).
 
 ```sh
-npm install
-npm test            # marker logic unit tests
+npm ci              # use Node.js 22
+npm test            # unit and mocked-command tests
 npm run check       # type-check against the VS Code API
-npm run package     # build the .vsix
+npm run check:release # validate paired package versions
+npm run test:integration # isolated real VS Code tests
+npm run test:pdf     # requires TeX, Poppler and Python dependencies
 ```
+
+See [docs/TESTING.md](docs/TESTING.md) for dependencies, coverage and the manual visual checklist.
 
 Open the folder in VS Code and press F5 to try it in a development window with `examples/sample.tex`.
 

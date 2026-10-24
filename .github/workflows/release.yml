@@ -1,5 +1,5 @@
 # Release: push a tag like v0.1.9 (e.g. from Fork: New Tag… → push), or run it by hand from the
-# Actions tab for an existing tag. The tag decides the version; new releases use the normal
+# Actions tab for an unpublished tag. All source versions must match the tag; releases use the normal
 # GitHub and Marketplace release channels regardless of minor-version parity.
 name: Release
 
@@ -9,22 +9,54 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing tag to (re)release, e.g. v0.1.9
+        description: Existing unpublished tag to release, e.g. v0.1.9
         required: true
 
 permissions:
   contents: write
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Validate tag syntax
+        run: |
+          if ! [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Expected vMAJOR.MINOR.PATCH"; exit 1
+          fi
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Require version-aligned tagged source
+        id: version
+        run: |
+          VERSION=$(node scripts/check-release.js "$TAG")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  checks:
+    needs: preflight
+    uses: ./.github/workflows/checks.yml
+    with:
+      ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
   release:
+    needs: [preflight, checks]
     runs-on: ubuntu-latest
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
+      VERSION: ${{ needs.preflight.outputs.version }}
       HAS_VSCE_PAT: ${{ secrets.VSCE_PAT != '' }}
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
 
       - uses: actions/setup-node@v5
@@ -32,29 +64,16 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install and test
-        run: |
-          npm ci
-          npm test
-          npm run check
-
-      - name: Version from tag
-        run: |
-          VERSION="${TAG#v}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Tag $TAG is not of the form vMAJOR.MINOR.PATCH"; exit 1
-          fi
-          CURRENT=$(node -p "require('./package.json').version")
-          if [ "$CURRENT" != "$VERSION" ]; then
-            echo "::warning::package.json says $CURRENT; building as $VERSION from the tag. Bump package.json in the next commit."
-            npm version "$VERSION" --no-git-tag-version --allow-same-version
-          fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: node scripts/check-release.js "$TAG"
 
       - name: Build packages
         run: |
           npx --yes @vscode/vsce@3 package -o "tex-authorship-$VERSION.vsix"
           (cd latex && zip -X "../authorship-latex-$VERSION.zip" authorship.sty authorship.lua)
+
+      - name: Inspect archives before publication
+        run: python3 scripts/verify-artifacts.py .
 
       - name: Release notes from commits since the previous tag
         run: |
@@ -82,7 +101,8 @@ jobs:
         run: |
           FILES=("tex-authorship-$VERSION.vsix" "authorship-latex-$VERSION.zip")
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "${FILES[@]}" --clobber
+            echo "::error::Release $TAG already exists; published assets will not be replaced."
+            exit 1
           else
             gh release create "$TAG" "${FILES[@]}" --title "$TAG" --notes-file notes.md
           fi

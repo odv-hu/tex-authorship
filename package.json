@@ -233,11 +233,15 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "tsc -p jsconfig.json",
-    "package": "npx --yes @vscode/vsce package --allow-missing-repository"
+    "package": "npx --yes @vscode/vsce@3 package --allow-missing-repository",
+    "check:release": "node scripts/check-release.js",
+    "test:integration": "node test/integration/run.js",
+    "test:pdf": "python3 test/pdf-regression.py"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
     "@types/vscode": "1.100.0",
+    "@vscode/test-electron": "2.5.2",
     "typescript": "^5.6.0"
   }
 }

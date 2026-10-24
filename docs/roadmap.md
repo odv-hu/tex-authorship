@@ -22,11 +22,17 @@ Already implemented:
 
 The test suite includes marker, bibliography, review and installation logic, plus
 command tests using a mocked VS Code API. LaTeX fixtures and manual PDF comparisons
-exist; real extension-host tests and a repeatable PDF regression runner in CI do not.
+exist. The first reliability tranche now adds an isolated extension-host suite, a
+repeatable PDF regression runner and CI definitions; see [TESTING.md](TESTING.md).
+CI execution and the remaining visual/interactive cases still need verification.
 
 ## Next: reliability
 
 ### 1. Release consistency and reproducibility
+
+Implemented in the first tranche: strict version/tag checks, archive inspection,
+release CI gates and refusal to replace published assets. Remaining: changelog,
+an observed CI run and a future authorised release through the new gates.
 
 - Fail before packaging or publishing if the tag, `package.json`, both root version
   fields in `package-lock.json`, and `authorship.sty` disagree. Remove the workflow's
@@ -43,6 +49,10 @@ version-aligned tagged commit produces both inspected artifacts reproducibly.
 
 ### 2. Real VS Code integration and visual checks
 
+Initial suite covers unmark/undo/redo, stale diagnostics, review removal, colour
+providers and theme/highlighting smoke checks in an isolated editor. A manual
+checklist is documented. Picker/clipboard automation and visual assertions remain.
+
 - Run tests in an actual extension host, for example with `@vscode/test-electron`.
 - Exercise normal paste options, explicit paste, marking/unmarking, bibliography
   selection, reassignment, cancellation, stale edits and undo/redo.
@@ -58,6 +68,11 @@ Done when the main editing workflows run in the extension host and the supported
 visual cases have repeatable checks or an explicit manual release checklist.
 
 ### 3. Automated PDF regression checks
+
+Initial runner covers review metadata across rendering/citation modes, legends,
+footnotes, included/nested multi-page text, floats and full-width-summary counts.
+Source metadata, broader layout assertions and automated bar/colour inspection
+remain; generated previews support manual review.
 
 - Turn the existing fixture compilations and comparisons into a repository-owned runner
   and CI checks, with temporary outputs outside tracked sources.

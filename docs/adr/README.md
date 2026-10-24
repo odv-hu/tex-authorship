@@ -21,3 +21,4 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0014](0014-bibliography-picker.md) | Implement source-only bibliography selection for reference passages | Accepted |
 | [0015](0015-ai-review-states.md) | Track human review separately from AI origin | Accepted |
 | [0016](0016-remove-editor-review-borders.md) | Remove editor review borders; retain tint and labels | Accepted |
+| [0017](0017-reliability-gates.md) | Validate tagged source and isolate reliability tests | Accepted |

@@ -17,3 +17,6 @@ docs/**
 
 AGENTS.md
 CLAUDE.md
+
+scripts/**
+.vscode-test/**
