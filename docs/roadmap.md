@@ -4,6 +4,8 @@ Updated for **0.1.20**, 2026-10-24.
 Reliability is the next priority, before adding more attribution features.
 Future items below are proposals, not shipped functionality; significant implementation
 decisions get an [ADR](adr/README.md).
+Open work is tracked in the [GitHub issues](https://github.com/odv-hu/tex-authorship/issues);
+this page explains the direction and the order of priorities.
 
 ## Current baseline: 0.1.20
 
