@@ -8,6 +8,7 @@ function fixture(t) {
  const write=(file,data)=>fs.writeFileSync(path.join(root,file),typeof data==='string'?data:JSON.stringify(data));
  write('package.json',{version:'1.2.3',publisher:'odv-hu'});write('package-lock.json',{version:'1.2.3',packages:{'':{version:'1.2.3'}}});
  write('latex/authorship.sty',String.raw`\ProvidesPackage{authorship}[2026/10/24 v1.2.3 Description]`);
+ write('CHANGELOG.md','# Changelog\n\n## [Unreleased]\n\n## [1.2.3] - 2026-10-24\n\n### Added\n\n- Something.\n');
  return {root,write};
 }
 test('matching release and tag pass without modifying sources',t=>{
@@ -28,4 +29,8 @@ test('invalid date and wrong publisher fail',t=>{
  const {root,write}=fixture(t);write('latex/authorship.sty',String.raw`\ProvidesPackage{authorship}[2026/02/31 v1.2.3 Description]`);assert.throws(()=>validate(root),/date/);
  write('latex/authorship.sty',String.raw`\ProvidesPackage{authorship}[2026/10/24 v1.2.3 Description]`);
  write('package.json',{version:'1.2.3',publisher:'other'});assert.throws(()=>validate(root),/publisher/i);
+});
+test('a missing changelog or version section fails the release check',t=>{
+ const {root,write}=fixture(t);write('CHANGELOG.md','# Changelog\n\n## [Unreleased]\n\n- Something.\n');assert.throws(()=>validate(root,'v1.2.3'),/CHANGELOG/);
+ fs.rmSync(path.join(root,'CHANGELOG.md'));assert.throws(()=>validate(root),/CHANGELOG\.md is missing/);
 });

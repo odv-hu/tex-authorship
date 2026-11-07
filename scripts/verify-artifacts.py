@@ -15,7 +15,8 @@ def verify(root, folder):
         names = vsix.namelist()
         assert len(names) == len(set(names)), 'Duplicate archive paths'
         expected = {'[Content_Types].xml', 'extension.vsixmanifest',
-                    'extension/package.json', 'extension/readme.md', 'extension/LICENSE.txt',
+                    'extension/package.json', 'extension/readme.md', 'extension/changelog.md',
+                    'extension/LICENSE.txt',
                     'extension/CITATION.cff', 'extension/examples/sample.tex',
                     'extension/images/icon.png', 'extension/images/logo.png', 'extension/images/logo-dark.png'}
         for directory in ('src', 'latex'):
@@ -26,13 +27,14 @@ def verify(root, folder):
                     assert vsix.read(name) == file.read_bytes(), f'Source mismatch: {name}'
         assert set(names) == expected, f'Unexpected/missing files: {set(names) ^ expected}'
         assert json.loads(vsix.read('extension/package.json')) == package, 'Package metadata differs'
-        # VSCE expands relative README links for Marketplace display.
-        readme = vsix.read('extension/readme.md').decode()
-        for kind in ('blob', 'raw'):
-            readme = readme.replace(f'https://github.com/odv-hu/tex-authorship/{kind}/HEAD/', '')
-        assert readme == (root / 'README.md').read_text(), 'README content differs'
-        for name in expected - {'[Content_Types].xml', 'extension.vsixmanifest',
-                                'extension/readme.md', 'extension/package.json'}:
+        # VSCE expands relative README and CHANGELOG links for Marketplace display.
+        for packaged, local in (('extension/readme.md', 'README.md'), ('extension/changelog.md', 'CHANGELOG.md')):
+            text = vsix.read(packaged).decode()
+            for kind in ('blob', 'raw'):
+                text = text.replace(f'https://github.com/odv-hu/tex-authorship/{kind}/HEAD/', '')
+            assert text == (root / local).read_text(), f'{local} content differs'
+        for name in expected - {'[Content_Types].xml', 'extension.vsixmanifest', 'extension/readme.md',
+                                'extension/changelog.md', 'extension/package.json'}:
             local = name.removeprefix('extension/')
             if local == 'LICENSE.txt':
                 local = 'LICENSE'
@@ -48,7 +50,7 @@ def verify(root, folder):
             assert latex.testzip() is None and sorted(latex.namelist()) == ['authorship.lua', 'authorship.sty']
             for name in latex.namelist():
                 assert latex.read(name) == vsix.read('extension/latex/' + name), f'LaTeX mismatch: {name}'
-    print(f'Verified {version}: versions, publisher, normal channel, archive allowlist and bundled sources')
+    print(f'Verified {version}: versions, publisher, normal channel, archive allowlist, changelog and bundled sources')
 
 
 if __name__ == '__main__':

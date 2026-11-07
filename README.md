@@ -298,7 +298,7 @@ Shared agent instructions are in [AGENTS.md](AGENTS.md). For versioned artifacts
 npm ci              # use Node.js 22
 npm test            # unit and mocked-command tests
 npm run check       # type-check against the VS Code API
-npm run check:release # validate paired package versions
+npm run check:release # validate paired package versions and the changelog section
 npm run test:integration # isolated real VS Code tests
 npm run test:pdf     # requires TeX, Poppler and Python dependencies
 ```
@@ -308,6 +308,7 @@ See [docs/TESTING.md](docs/TESTING.md) for dependencies, coverage and the manual
 Open the folder in VS Code and press F5 to try it in a development window with `examples/sample.tex`.
 
 Design decisions are recorded in [`docs/adr/`](docs/adr/), and likely next features in [`docs/roadmap.md`](docs/roadmap.md).
+User-visible changes per version are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Citing
 

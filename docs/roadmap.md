@@ -33,8 +33,9 @@ CI execution and the remaining visual/interactive cases still need verification.
 ### 1. Release consistency and reproducibility
 
 Implemented in the first tranche: strict version/tag checks, archive inspection,
-release CI gates and refusal to replace published assets. Remaining: changelog,
-an observed CI run and a future authorised release through the new gates.
+release CI gates and refusal to replace published assets. A `CHANGELOG.md` section is
+now required for each version and supplies the GitHub release notes (ADR-0020).
+Remaining: an observed CI run and a future authorised release through the new gates.
 
 - Fail before packaging or publishing if the tag, `package.json`, both root version
   fields in `package-lock.json`, and `authorship.sty` disagree. Remove the workflow's
@@ -44,7 +45,7 @@ an observed CI run and a future authorised release through the new gates.
   publisher, release channel and bundled files. Preserve published artifacts and tags.
 - Make the release sequence explicit: align versions, verify, commit, build from that
   commit, then tag that commit and publish only when authorised.
-- Add a `CHANGELOG.md` and keep the local release checklist and CI aligned.
+- Keep `CHANGELOG.md`, the local release checklist and CI aligned.
 
 Done when deliberately mismatched versions fail before publication and a clean,
 version-aligned tagged commit produces both inspected artifacts reproducibly.

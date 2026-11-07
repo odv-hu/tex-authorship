@@ -12,7 +12,8 @@ git diff --check
 ```
 
 The release validator checks package.json, both lockfile root versions, the LaTeX
-version/date and publisher without changing files. Pass an intended tag with
+version/date, publisher and a dated CHANGELOG.md section with entries for the
+version, without changing files. Pass an intended tag with
 `npm run check:release -- vMAJOR.MINOR.PATCH` to enforce an exact match.
 
 ## Actual VS Code extension host

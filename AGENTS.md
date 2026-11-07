@@ -20,7 +20,7 @@ Open work lives in the GitHub issues of `odv-hu/tex-authorship`. docs/roadmap.md
 - **Commits:** every commit that works on an issue names it in the message body: `Refs #n` for progress, `Fixes #n` when the commit resolves it completely (GitHub closes it when the owner pushes to `main`).
 - **Context in the thread:** when you stop working on an issue, or learn something the next person needs, comment: what was done (commit hashes), the checks run and their results, decisions and who took them, and what is left. No raw logs; never write full absolute paths (they contain the owner's account name).
 - **Owner decisions:** a question only the owner can answer goes into the issue as a comment ending with the question, with the `question` label; do not decide it in the code.
-- **Closing:** when an issue is resolved, update the README, docs/TESTING.md or the ADRs where the behaviour or evidence changed, and remove or update the item in docs/roadmap.md. Once CHANGELOG.md exists (#1), add user-visible changes to its unreleased section.
+- **Closing:** when an issue is resolved, update the README, docs/TESTING.md or the ADRs where the behaviour or evidence changed, and remove or update the item in docs/roadmap.md. Add user-visible changes to the *Unreleased* section of CHANGELOG.md; test-only and documentation-only work needs no entry.
 - **Without GitHub access** (no `gh`, no network): put the issue text or comment in your final message under "For the issue tracker", with the issue number, for the owner to post.
 
 ## Working rules

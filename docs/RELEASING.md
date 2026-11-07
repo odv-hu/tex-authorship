@@ -8,6 +8,8 @@ Building is separate from committing, tagging and publishing.
 Inspect the working tree, latest tags, package.json, package-lock.json, latex/authorship.sty and dist/.
 Use the version requested by the owner. If it already identifies a published release with different contents, propose a new patch version rather than replacing that release.
 Align package.json's version, both root-package version fields in package-lock.json, and the version/date in latex/authorship.sty. Never change dependency versions just to bump the extension version.
+Update CHANGELOG.md: move the *Unreleased* entries into a new `## [MAJOR.MINOR.PATCH] - YYYY-MM-DD` section below an empty *Unreleased* heading, using the release date, and add its compare link at the bottom (`[MAJOR.MINOR.PATCH]: https://github.com/odv-hu/tex-authorship/compare/vPREVIOUS...vMAJOR.MINOR.PATCH`, with the *Unreleased* link starting from the new tag).
+Entries describe user-visible changes; leave out test-only and documentation-only work. This section becomes the GitHub release notes and the Marketplace changelog, so review it as release content.
 Retain unrelated working changes. State that an uncommitted build is a candidate, not an artifact built from a final release commit.
 
 ## 2. Verify
@@ -24,7 +26,8 @@ npm run test:pdf
 git diff --check
 ```
 
-See [TESTING.md](TESTING.md) for test dependencies and the manual visual checklist. Validate the intended tag with `npm run check:release -- vMAJOR.MINOR.PATCH` before tagging.
+See [TESTING.md](TESTING.md) for test dependencies and the manual visual checklist. Validate the intended tag with `npm run check:release -- vMAJOR.MINOR.PATCH` before tagging; it also requires a dated CHANGELOG.md section with entries for the version.
+Preview the release notes with `node scripts/changelog.js MAJOR.MINOR.PATCH`.
 
 Run relevant LuaLaTeX fixtures for changes under latex/. Review the actual rendered result and check hide mode. Do not continue packaging after a failed check without resolving or explicitly reporting the blocker.
 
@@ -50,6 +53,7 @@ Never finish with only a VSIX in /tmp or a same-version local test installation.
 Run `python3 scripts/verify-artifacts.py dist` against the intended source checkout, then review the packaged result. The automated inspection checks:
 
 - The archive is readable; extension/package.json has the requested version and publisher odv-hu.
+- The bundled README and changelog match the source, apart from the packager's link expansion.
 - extension.vsixmanifest has the matching version and no enabled pre-release flag.
 - Bundled src/ and latex/ files match the intended source, including the new feature.
 - No credentials, node_modules, previous archives or unrelated artifacts are included.
@@ -63,7 +67,7 @@ Do not call the release published or installed merely because packaging succeede
 For a reproducible release, commit the version-aligned source and approved fixes, then build from that exact commit and create the matching vMAJOR.MINOR.PATCH tag. Do not move an existing release tag.
 If source changes after a candidate build, rebuild from the approved source before distributing it; obtain authorization before replacing an existing artifact.
 
-Pushing a release tag triggers the GitHub workflow. It validates the tagged source, runs the reliability suite, inspects archives, creates new GitHub release assets and may publish to Marketplace when the configured publishing secret is available. Treat pushing such a tag or dispatching the workflow as a publishing action requiring explicit authorization.
+Pushing a release tag triggers the GitHub workflow. It validates the tagged source (including the changelog section), runs the reliability suite, inspects archives, creates the GitHub release with that changelog section as its notes and may publish to Marketplace when the configured publishing secret is available. Treat pushing such a tag or dispatching the workflow as a publishing action requiring explicit authorization.
 The workflow refuses to replace an existing GitHub release. If publication only partially succeeds (for example, GitHub succeeds but Marketplace fails), inspect the completed steps and request explicit recovery authorization; a blind rerun will stop.
 
 When the owner requests local installation, install the versioned dist/ VSIX and verify the installed version. Tell the owner to reload VS Code if the extension host still has the previous implementation loaded.

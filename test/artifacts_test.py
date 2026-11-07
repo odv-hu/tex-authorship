@@ -23,6 +23,7 @@ class ArchiveChecks(unittest.TestCase):
             'extension.vsixmanifest': f'<PackageManifest><Identity Version="{version}" Publisher="odv-hu"/></PackageManifest>'.encode(),
             'extension/package.json': (ROOT / 'package.json').read_bytes(),
             'extension/readme.md': (ROOT / 'README.md').read_bytes(),
+            'extension/changelog.md': (ROOT / 'CHANGELOG.md').read_bytes(),
             'extension/LICENSE.txt': (ROOT / 'LICENSE').read_bytes(),
         }
         for name in ['CITATION.cff', 'examples/sample.tex', 'images/icon.png', 'images/logo.png', 'images/logo-dark.png']:
@@ -50,6 +51,14 @@ class ArchiveChecks(unittest.TestCase):
     def test_changed_source(self):
         with self.assertRaises(AssertionError):
             self.check_archive(lambda entries: entries.update({'extension/latex/authorship.lua': b'changed'}))
+
+    def test_missing_changelog(self):
+        with self.assertRaises(AssertionError):
+            self.check_archive(lambda entries: entries.pop('extension/changelog.md'))
+
+    def test_changed_changelog(self):
+        with self.assertRaises(AssertionError):
+            self.check_archive(lambda entries: entries.update({'extension/changelog.md': b'# Changelog\n'}))
 
     def test_unexpected_file(self):
         with self.assertRaises(AssertionError):

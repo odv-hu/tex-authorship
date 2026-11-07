@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const changelog = require('./changelog');
 
 function validate(root, tag) {
   const pkg = JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
@@ -16,6 +17,7 @@ function validate(root, tag) {
   const parsed = new Date(date+'T00:00:00Z');
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0,10)!==date) throw Error('Invalid authorship.sty release date');
   if (pkg.publisher !== 'odv-hu') throw Error('Unexpected extension publisher');
+  changelog.validate(root, version);
   return version;
 }
 if (require.main === module) {
