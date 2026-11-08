@@ -192,6 +192,45 @@ function stripComment(line) {
 }
 
 /**
+ * Lines that count: the body between \begin{document} and \end{document} when the file
+ * has one, otherwise the whole file (an included fragment).
+ * @param {string[]} lines
+ * @returns {[number, number]}  start (inclusive), end (exclusive)
+ */
+function bodyRange(lines) {
+  let start = 0, end = lines.length;
+  const b = lines.findIndex(l => /\\begin\{document\}/.test(stripComment(l)));
+  if (b !== -1) {
+    start = b + 1;
+    const e = lines.findIndex((l, i) => i > b && /\\end\{document\}/.test(stripComment(l)));
+    if (e !== -1) end = e;
+  }
+  return [start, end];
+}
+
+// Commands whose braced argument is a key, label, path or environment name, not prose.
+const NON_TEXT_ARGUMENT = /\\(?:[a-zA-Z]*cite[a-zA-Z]*|(?:eq|page|auto|name)?ref|[cC]ref|label|url|href|includegraphics|input|include|begin|end|bibliography(?:style)?|usepackage|documentclass)\*?(?:\s*\[[^\]]*\])*\s*\{[^{}]*\}/g;
+
+/**
+ * Estimate the words a source line contributes (ADR-0021). Comments, control sequences
+ * and the arguments of citation, reference, label, URL, file and environment commands
+ * are dropped; a word is then a whitespace-separated run containing a letter or digit.
+ * This is a source estimate: it does not expand macros or follow TeX's typesetting.
+ * @param {string} line
+ */
+function countWords(line) {
+  const text = stripComment(line)
+    .replace(NON_TEXT_ARGUMENT, ' ')
+    .replace(/\\[a-zA-Z@]+\*?/g, ' ')   // control words separate words: \emph{x}
+    .replace(/\\./g, '')                // control symbols join: caf\'e, \%, \,
+    .replace(/[{}]/g, '')
+    .replace(/[~$&^_#]/g, ' ');
+  let n = 0;
+  for (const token of text.split(/\s+/)) if (/[\p{L}\p{N}]/u.test(token)) n++;
+  return n;
+}
+
+/**
  * Count visible (non-whitespace, non-comment) characters per author.
  * Only the body between \begin{document} and \end{document} counts when the file has one.
  * @param {string[]} lines
@@ -200,13 +239,7 @@ function stripComment(line) {
  */
 function countByAuthor(lines, parsed) {
   parsed = parsed || parseDocument(lines);
-  let start = 0, end = lines.length;
-  const b = lines.findIndex(l => /\\begin\{document\}/.test(stripComment(l)));
-  if (b !== -1) {
-    start = b + 1;
-    const e = lines.findIndex((l, i) => i > b && /\\end\{document\}/.test(stripComment(l)));
-    if (e !== -1) end = e;
-  }
+  const [start, end] = bodyRange(lines);
   /** @type {Map<string, number>} */
   const counts = new Map();
   let total = 0;
@@ -360,7 +393,7 @@ function formatColor(rgb, style) {
 module.exports = {
   findAuthorshipColors, collectColors, lookupColor, findOwner, parseColor, formatColor, isHexColor,
   MARKER_RE, PREFIX_KIND, KIND_PREFIX,
-  parseMarkerLine, parseDocument, blockAt, wrapText, countByAuthor, insideVerbatim,
+  parseMarkerLine, parseDocument, blockAt, wrapText, countByAuthor, bodyRange, countWords, insideVerbatim,
   authorKey, openTag, closeTag, stripComment,
   sourceComment, sourceKey, isSourceComment,
 };

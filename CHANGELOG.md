@@ -9,6 +9,17 @@ Versions before 0.1.20 are listed on the
 
 ## [Unreleased]
 
+### Added
+
+- Review progress for AI-origin words. When a document contains reviewed or revised
+  AI passages, `\AuthorshipSummary` and `\AuthorshipSummaryFullWidth` add a table of
+  AI-origin words that are unreviewed, reviewed, revised, or changed since review;
+  the rows add up to the AI words in the author table, and reviewing still moves no
+  words to the reviewer. `\AuthorshipReviewProgress` prints the table on its own.
+  Documents without reviews keep their current summary.
+- The status-bar tooltip and *Show Authorship Statistics* show the same split for
+  the current file as a source-based word estimate.
+
 ### Changed
 
 - GitHub release notes now come from this changelog instead of the list of commits

@@ -29,6 +29,8 @@
 \providecommand\AuthorshipSetSummary[1]{}
 \providecommand\AuthorshipSummary{}
 \providecommand\AuthorshipReviewLegend{}
+\providecommand\AuthorshipSetReviewProgress[1]{}
+\providecommand\AuthorshipReviewProgress{}
 \providecommand\AuthorshipSummaryFullWidth[1][Authorship summary]{}
 \providecommand\AuthorshipColor[2]{}
 \providecommand\AuthorshipGradient[2]{}
@@ -118,6 +120,15 @@
   \directlua{authorship.previous = "\luaescapestring{\detokenize{#1}}"}}
 \renewcommand\AuthorshipSummary{\directlua{authorship.typeset_summary()}}
 \renewcommand\AuthorshipReviewLegend{\directlua{authorship.typeset_review_legend()}}
+
+% Review progress of AI-origin words from the previous run (ADR-0021); kept apart from
+% \AuthorshipSetSummary so readers of the author totals are unaffected.
+\def\AuthorshipWriteReviewAux#1{%
+  \immediate\write\@auxout{\string\providecommand\string\AuthorshipSetReviewProgress[1]{}%
+    \string\AuthorshipSetReviewProgress{#1}}}
+\renewcommand\AuthorshipSetReviewProgress[1]{%
+  \directlua{authorship.previous_review = "\luaescapestring{\detokenize{#1}}"}}
+\renewcommand\AuthorshipReviewProgress{\directlua{authorship.typeset_review_progress(false, true)}}
 
 % Full-width summary: keep heading and table together in document flow.
 % Two-column output requires a fresh page for full width.

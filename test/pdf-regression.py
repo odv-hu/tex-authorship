@@ -28,6 +28,14 @@ def run(name,text,engine='lualatex'):
   chars=[(number,c['text'],round(c['x0'],3),round(c['top'],3)) for number,page in enumerate(pdf.pages) for c in page.chars]
   assert chars, 'No glyphs extracted: '+name
  return counts,chars,log
+STATES=['unreviewed','reviewed','revised','changed']
+def progress(name):
+ found=re.findall(r'\\AuthorshipSetReviewProgress\{([^}]+)\}',(out/(name+'.aux')).read_text())
+ assert found,'Missing review progress: '+name
+ return {k:int(v) for k,v in (part.split('=') for part in found[-1].split('|'))}
+def ai_words(counts): return sum(int(e.rsplit(',',1)[1]) for e in counts[-1].split('|') if e.startswith('&'))
+def pdf_text(name):
+ with pdfplumber.open(out/(name+'.pdf')) as pdf: return ''.join(p.extract_text() for p in pdf.pages)
 for mode in ['show','citations','gradient','natbib','hide','pdf','nopackage']:
  text=source.replace(r'\ReviewOptions{citations}',r'\ReviewOptions{'+('citations' if mode in ['natbib','pdf'] else mode)+'}')
  if mode=='natbib':text=text.replace(r'\begin{document}',r'\usepackage{natbib}'+'\n'+r'\begin{document}').replace(r'\cite{x}',r'\citep{x}').replace(r'\bibitem{x}',r'\bibitem[Example(2024)]{x}')
@@ -50,6 +58,16 @@ assert a[0]==b[0]
 with pdfplumber.open(out/'legend.pdf') as pdf: text=''.join(p.extract_text() for p in pdf.pages)
 assert all(t in text for t in ['Reviewed (single bar)','Revised (double bar)','Changed since review','Balázs','Anna'])
 subprocess.run(['pdftoppm','-scale-to','1100','-singlefile','-png',str(out/'legend.pdf'),str(out/'legend')],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+# Review progress (ADR-0021): every state occurs, states add up to the AI-origin words,
+# and documents without review metadata keep their summary unless asked explicitly.
+p=progress('legend');assert p['reviews']==3 and p['unreviewed']==0 and min(p[s] for s in STATES[1:])>0,p
+assert sum(p[s] for s in STATES)==ai_words(a[0]),p
+assert 'AI review progress (typeset words)' in text and 'Revised, unchanged since review' in text
+q=progress('legend-plain');assert q['reviews']==0 and q['unreviewed']==ai_words(b[0]),q
+assert 'AI review progress' not in pdf_text('legend-plain')
+run('progress-explicit','\n'.join(l for l in source.split('\n') if not l.startswith('% authorship-review:')).replace(r'\AuthorshipSummary',r'\AuthorshipReviewProgress'))
+assert 'AI review progress (typeset words)' in pdf_text('progress-explicit')
+print('Review progress states reconcile with AI-origin words; opt-in table only with reviews or explicit command.',flush=True)
 # A long multi-page passage, including a nested passage and a float.
 body='\n\n'.join(['Long reviewed passage with text for checking page breaks. '*50]*5)
 body+='\n%[&AI: Claude]\nNested AI text.\n%[/&AI: Claude]\n'+r'\begin{figure}[t]\centering Floating reviewed text.\caption{Reviewed caption.}\end{figure}'
@@ -58,9 +76,11 @@ sub='%[&AI: ChatGPT]\n% authorship-review: '+json.dumps(r)+'\n'+body+'\n%[/&AI: 
 (out/'chapter.tex').write_text(sub)
 main=r'\documentclass{article}\usepackage{authorship}\begin{document}\input{chapter}\end{document}'
 a=run('multipage',main);assert 'changed since' not in a[2]
+p=progress('multipage');assert p['unreviewed']==3 and p['revised']==ai_words(a[0])-3 and p['reviewed']==p['changed']==0,p  # nested passage keeps its own state
 (out/'chapter.tex').write_text('\n'.join(l for l in sub.split('\n') if not l.startswith('% authorship-review:')))
 b=run('multipage-plain',main);assert a[:2]==b[:2]
 print('Legend excluded from counts; included-file/multi-page/nested/float geometry and counts match.',flush=True)
 full=run('fullwidth',source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth'))
+assert 'AI review progress (typeset words)' in pdf_text('fullwidth')
 assert full[0]==run('fullwidth-plain', '\n'.join(l for l in source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth').split('\n') if not l.startswith('% authorship-review:')))[0]
 print('Full-width summary counts match; all PDF checks passed.')

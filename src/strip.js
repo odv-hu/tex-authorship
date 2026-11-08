@@ -12,7 +12,8 @@ function stripAuthorship(text, footer = '') {
   /** @type {Record<string, number>} */
   const arity = {AuthorshipOwner:1, AuthorshipColor:2, AuthorshipGradient:2,
     AuthorshipCitationColor:1, AuthorshipSummary:0, AuthorshipSummaryFullWidth:0,
-    AuthorshipReviewLegend:0, AuthorshipSetSummary:1};
+    AuthorshipReviewLegend:0, AuthorshipReviewProgress:0, AuthorshipSetSummary:1,
+    AuthorshipSetReviewProgress:1};
   let i = 0, out = '';
   const fail = () => new Error('Unsupported or incomplete authorship syntax. No changes were made.');
   function skip() {

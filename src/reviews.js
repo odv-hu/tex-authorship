@@ -33,4 +33,42 @@ function collect(lines,parsed) {
   }
   return {reviews,problems};
 }
-module.exports={isReview,parse,fingerprint,comment,collect};
+/** @typedef {{unreviewed:number, reviewed:number, revised:number, changed:number, total:number}} Progress */
+/**
+ * Review progress of AI-origin words as a source estimate (ADR-0021). Each word belongs to
+ * its innermost passage, as in the authorship counts; an AI word takes that passage's state:
+ * unreviewed, reviewed or revised with a current fingerprint, or changed since review.
+ * A review on an enclosing passage does not cover a nested AI passage, matching the tints.
+ * The states never overlap and add up to `total`, the AI-origin word estimate.
+ * @param {string[]} lines @param {import('./markers').Parsed} [parsed] @param {ReturnType<typeof collect>} [info]
+ * @returns {Progress}
+ */
+function progress(lines,parsed,info) {
+  parsed = parsed || M.parseDocument(lines);
+  info = info || collect(lines,parsed);
+  /** @type {(import('./markers').Block|null)[]} */ const own = new Array(lines.length).fill(null);
+  for (const b of [...parsed.blocks].sort((a,b)=>a.depth-b.depth)) {
+    const end = b.closeLine===-1 ? lines.length : b.closeLine;
+    for (let i=b.openLine+1;i<end;i++) own[i]=b;
+  }
+  const counts = {unreviewed:0,reviewed:0,revised:0,changed:0,total:0};
+  const [start,end] = M.bodyRange(lines);
+  for (let i=start;i<end;i++) {
+    const key = parsed.lineAuthor[i];
+    if (parsed.isMarker[i] || !key || M.parseMarkerLine(M.openTag(key))?.kind!=='ai') continue;
+    const n = M.countWords(lines[i]);
+    if (!n) continue;
+    const b = own[i], r = b ? info.reviews.get(b.openLine) : undefined;
+    counts[!r ? 'unreviewed' : r.stale ? 'changed' : r.review.status] += n;
+    counts.total += n;
+  }
+  return counts;
+}
+/** Labels shared by the editor views, in the order of ADR-0021. */
+const PROGRESS_LABELS = /** @type {const} */ ([
+  ['unreviewed','Unreviewed'],
+  ['reviewed','Reviewed, unchanged since review'],
+  ['revised','Revised, unchanged since review'],
+  ['changed','Changed since review'],
+]);
+module.exports={isReview,parse,fingerprint,comment,collect,progress,PROGRESS_LABELS};

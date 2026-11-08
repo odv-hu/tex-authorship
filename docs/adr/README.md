@@ -25,3 +25,4 @@ Records are not edited after the fact; a changed decision gets a new record that
 | [0018](0018-remove-document-authorship.md) | Explicit, undoable document authorship removal | Accepted |
 | [0019](0019-submission-counts-and-history-restore.md) | Submission totals and restoration from removal commits | Accepted |
 | [0020](0020-release-notes-from-changelog.md) | Take release notes from a required CHANGELOG.md section | Accepted |
+| [0021](0021-review-progress-counts.md) | Review progress counts for AI-origin words | Proposed |

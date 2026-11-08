@@ -136,6 +136,18 @@ Hidden mode and pdfLaTeX omit review display. Update both package files for PDF
 support; old packages ignore these comments safely. Review does not certify
 factual accuracy or change the AI-origin word/character totals.
 
+**Review progress.** Once a document has review metadata, the authorship summary
+adds an *AI review progress (typeset words)* table: AI-origin words that are
+unreviewed, reviewed and unchanged since review, revised and unchanged since
+review, or changed since review. The four rows add up to the AI-origin words in
+the author table; each word counts once, under the passage it is attributed to. A
+review of an outer passage does not cover a nested AI passage without its own
+review. `\AuthorshipReviewProgress` prints the table on its own, also in documents
+without reviews. The status-bar tooltip and *Show Authorship Statistics* show the
+same split as a source estimate for the current file. The two differ slightly by
+design: citation labels and footnote marks exist only in the PDF. See
+[ADR-0021](docs/adr/0021-review-progress-counts.md).
+
 **Making a passage yours.** Once you've rewritten a Claude passage enough, put the cursor inside it, right-click → *Unmark Passage*.
 The two marker lines are removed and the text stays as it is.
 
@@ -177,7 +189,7 @@ file path; renames and removal commits on other branches require manual Git
 recovery.
 
 **Status bar.** Shows your share and each author's share of the file, counting visible characters and skipping comments and the preamble.
-Click it for the exact numbers.
+Click it for the exact numbers. When the file has AI text, the tooltip also shows its review progress in words (a source estimate).
 
 **Coloured PDF.** Your normal pdfLaTeX build stays as it is.
 When you want the coloured draft, run *Authorship: Build Coloured Draft (LuaLaTeX)*, or pick LaTeX Workshop's `latexmk (lualatex)` recipe yourself. 

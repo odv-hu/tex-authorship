@@ -16,6 +16,7 @@ test('remove settings, nested arguments and both summary layouts', () => {
 Text\AuthorshipSummary{}.
 \AuthorshipSummaryFullWidth[An {optional]} heading]
 \AuthorshipReviewLegend
+\AuthorshipReviewProgress
 `;
   assert.equal(strip(source), 'Text{}.\n');
 });

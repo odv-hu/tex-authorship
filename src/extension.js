@@ -228,6 +228,19 @@ function decorate(editor, used) {
   return { lines, parsed };
 }
 
+/**
+ * Review progress of AI-origin words in this file (ADR-0021), one line per state.
+ * Empty when the file has no AI-origin words.
+ * @param {string[]} lines
+ */
+function reviewProgressLines(lines) {
+  const p = V.progress(lines);
+  if (!p.total) return [];
+  const pct = (/** @type {number} */ n) => `${Math.round((100 * n) / p.total)}%`;
+  return [...V.PROGRESS_LABELS.map(([k, label]) => `${label}: ${p[k].toLocaleString()} (${pct(p[k])})`),
+    `AI-origin total: ${p.total.toLocaleString()}`];
+}
+
 /** @param {vscode.TextEditor | undefined} editor */
 function updateStatus(editor) {
   if (!editor || !isTex(editor.document)) { statusItem.hide(); return; }
@@ -245,8 +258,10 @@ function updateStatus(editor) {
     parts.push(`${KIND_ICON[a.kind]} ${pct(n)}`);
     tip.push(`${a.label}: ${n.toLocaleString()} characters (${pct(n)})`);
   }
+  const review = reviewProgressLines(lines);
   statusItem.text = parts.join('  ');
-  statusItem.tooltip = `Authorship in this file (visible characters, comments excluded)\n\n${tip.join('\n')}`;
+  statusItem.tooltip = `Authorship in this file (visible characters, comments excluded)\n\n${tip.join('\n')}` +
+    (review.length ? `\n\nAI review progress (source estimate, words)\n${review.join('\n')}` : '');
   statusItem.show();
 }
 
@@ -512,12 +527,15 @@ async function cmdUnmark() {
 async function cmdStats() {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isTex(editor.document)) return;
-  const { counts, total } = M.countByAuthor(docLines(editor.document));
+  const lines = docLines(editor.document);
+  const { counts, total } = M.countByAuthor(lines);
   if (!total) { vscode.window.showInformationMessage('Authorship: no text to count.'); return; }
   const pct = (/** @type {number} */ n) => `${((100 * n) / total).toFixed(1)}%`;
   const rows = [...counts].sort((a, b) => b[1] - a[1])
     .map(([k, n]) => `${k ? authorFor(k).label : ownerFor(editor.document)}: ${pct(n)} (${n.toLocaleString()})`);
-  vscode.window.showInformationMessage(`Authorship of ${path.basename(editor.document.fileName)} — ${rows.join(' · ')}`);
+  const review = reviewProgressLines(lines);
+  vscode.window.showInformationMessage(`Authorship of ${path.basename(editor.document.fileName)} — ${rows.join(' · ')}` +
+    (review.length ? ` — AI review progress (source estimate, words): ${review.join(' · ')}` : ''));
 }
 
 async function cmdToggle() {

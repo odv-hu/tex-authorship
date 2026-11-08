@@ -35,3 +35,34 @@ test('nested review metadata does not invalidate outer review; nested text does'
  modified[4]='Changed inner text.';
  assert.equal(V.collect(modified,M.parseDocument(modified)).reviews.get(0).stale,true);
 });
+test('source word estimate drops comments, commands and non-prose arguments',()=>{
+ assert.equal(M.countWords("Hello \\emph{world}, caf\\'e! % not counted"),3);
+ assert.equal(M.countWords('See \\cite[p.~3]{smith2020} and Fig.~\\ref{fig:a}.'),3);
+ assert.equal(M.countWords('\\begin{itemize} -- \\end{itemize}'),0);
+ assert.equal(M.countWords('Árvíztűrő tükörfúrógép 2026'),3);
+});
+test('review progress splits AI-origin words into states that add up to the AI total',()=>{
+ const p1=mark(['%[&AI: ChatGPT]','one two three','%[/&AI: ChatGPT]']);
+ const p2=mark(['%[&AI: ChatGPT]','four five','%[/&AI: ChatGPT]'],'revised');
+ const p3=mark(['%[&AI: Claude]','six seven','%[/&AI: Claude]']);p3[2]='six seven eight';
+ const lines=['\\documentclass{article}','\\title{Preamble words are ignored}','\\begin{document}','Owner words here.',...p1,...p2,...p3,
+  '%[&AI: Claude]','nine','%[@Anna]','Human words inside are not AI.','%[/@Anna]','%[/&AI: Claude]',
+  '%[*Smith]','Reference words.','%[/*Smith]','\\end{document}','after end'];
+ const parsed=M.parseDocument(lines);
+ assert.deepEqual(V.progress(lines,parsed),{unreviewed:1,reviewed:3,revised:2,changed:3,total:9});
+ // reviewing moves no words between authors
+ const plain=lines.filter(l=>!V.isReview(l));
+ assert.deepEqual(M.countByAuthor(lines).counts,M.countByAuthor(plain).counts);
+ assert.deepEqual(V.progress(plain),{unreviewed:9,reviewed:0,revised:0,changed:0,total:9});
+});
+test('nested AI passages count once, under their own review state',()=>{
+ const inner=['%[&AI: Claude]','inner words','%[/&AI: Claude]'];
+ const outer=mark(['%[&AI: ChatGPT]','outer',...inner,'more outer','%[/&AI: ChatGPT]']);
+ assert.deepEqual(V.progress(outer),{unreviewed:2,reviewed:3,revised:0,changed:0,total:5});
+ const both=mark(['%[&AI: ChatGPT]','outer',...mark(inner,'revised'),'more outer','%[/&AI: ChatGPT]']);
+ assert.deepEqual(V.progress(both),{unreviewed:0,reviewed:3,revised:2,changed:0,total:5});
+});
+test('malformed review metadata leaves words unreviewed',()=>{
+ const lines=['%[&AI: ChatGPT]','% authorship-review: {"version":1}','three more words','%[/&AI: ChatGPT]'];
+ assert.deepEqual(V.progress(lines),{unreviewed:3,reviewed:0,revised:0,changed:0,total:3});
+});

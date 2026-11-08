@@ -108,21 +108,10 @@ artifacts on failure, rather than depending on one-off local scripts.
 
 ### Review progress statistics
 
-Show **AI-origin words** split into mutually exclusive states:
-
-- Unreviewed.
-- Reviewed and unchanged since review.
-- Revised and unchanged since review.
-- Changed since review (stale Reviewed or Revised passages).
-
-Keep this separate from authorship totals: reviewing a passage must not transfer its
-words to the reviewer. Define the denominator and nesting rules explicitly, avoid
-counting nested text twice, and make the state totals reconcile with the AI-origin
-word total. Optional per-reviewer breakdowns can follow. Distinguish the editor's
-source-based estimates from the PDF's typeset counts.
-
-The current reviewer legend identifies people/states; it is **not** a review-progress
-word-count breakdown.
+Implemented for the next release ([ADR-0021](adr/0021-review-progress-counts.md)):
+AI-origin words split into unreviewed, reviewed, revised and changed-since-review
+states, as a source estimate in the editor and as typeset counts in the PDF summary.
+Optional per-reviewer breakdowns can follow.
 
 ### Project-wide counts
 

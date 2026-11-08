@@ -228,6 +228,10 @@ local GLUE = node.id("glue")
 local EXCLUDED = 0x7FFFFF00     -- attribute value for text left out of the counts (the summary itself)
 
 local stats = {}                -- key ("Mine" or author key) -> {chars, words}
+-- AI-origin words by the review state of the passage they count for (ADR-0021).
+-- Counted at the same moment as the author's word, so the states add up to the AI total.
+local REVIEW_STATES = { "unreviewed", "reviewed", "revised", "changed" }
+local review_words = { unreviewed = 0, reviewed = 0, revised = 0, changed = 0 }
 local function stats_for(key)
   local s = stats[key]
   if not s then s = { chars = 0, words = 0 }; stats[key] = s end
@@ -245,7 +249,7 @@ local function wordish(ch)
   return ch and ((ch >= 48 and ch <= 57) or (ch >= 65 and ch <= 90) or (ch >= 97 and ch <= 122) or ch >= 0xC0)
 end
 
-local function count_glyph(n, key)
+local function count_glyph(n, key, inst)
   local s = stats_for(key)
   local chars = 0
   if n.components then for _ in node.traverse_id(GLYPH, n.components) do chars = chars + 1 end end
@@ -254,6 +258,11 @@ local function count_glyph(n, key)
   if not word_counted and wordish(n.char) then
     s.words = s.words + 1
     word_counted = true
+    if inst and inst.author.kind == "ai" then
+      local r = inst.review
+      local state = not r and "unreviewed" or r.stale and "changed" or r.status
+      review_words[state] = review_words[state] + 1
+    end
   end
 end
 
@@ -271,7 +280,7 @@ local function colour_for(n)
     return nil
   end
   local a = inst.author
-  if n.id == GLYPH then count_glyph(n, a.key) end
+  if n.id == GLYPH then count_glyph(n, a.key, inst) end
   if citation then return "citation", citation_colour end
   local style = style_of(a)
   if style.stops then
@@ -370,15 +379,30 @@ local function summary_string()
   return table.concat(parts, "|")
 end
 
+-- "reviews=<passages with review metadata>|unreviewed=<words>|reviewed=...|revised=...|changed=..."
+local function review_string()
+  local used = 0
+  for _, r in ipairs(review_records) do if r.used then used = used + 1 end end
+  local parts = { "reviews=" .. used }
+  for _, state in ipairs(REVIEW_STATES) do parts[#parts + 1] = state .. "=" .. review_words[state] end
+  return table.concat(parts, "|"), used
+end
+
 function M.finish()
   if #stack > 0 then
     warn("marker %[" .. instances[stack[#stack]].author.key .. "] is never closed")
   end
   local s = summary_string()
   texio.write_nl("term and log", "authorship: characters,words per author: " .. (s:gsub("|", "; ")))
+  local r, used = review_string()
+  if used > 0 then
+    texio.write_nl("term and log", "authorship: AI-origin words by review state: " .. (r:gsub("|", "; ")))
+  end
   texio.write_nl("term and log", "")
   tex.sprint("\\AuthorshipWriteAux{")
   tex.sprint(-2, s)
+  tex.sprint("}\\AuthorshipWriteReviewAux{")
+  tex.sprint(-2, r)
   tex.sprint("}")
 end
 
@@ -435,6 +459,45 @@ function M.typeset_review_legend()
   tex.sprint("\\endgroup")
 end
 
+-- Review progress of AI-origin words from the previous run (ADR-0021). The summary
+-- appends it only when that run met review metadata, so documents without reviews keep
+-- their output; \AuthorshipReviewProgress asks for it explicitly.
+local REVIEW_LABELS = {
+  unreviewed = "Unreviewed",
+  reviewed   = "Reviewed, unchanged since review",
+  revised    = "Revised, unchanged since review",
+  changed    = "Changed since review",
+}
+function M.typeset_review_progress(full_width, explicit)
+  local prev = M.previous_review
+  if not prev or prev == "" then
+    if explicit then tex.sprint("\\textit{(AI review progress appears after the next LuaLaTeX run.)}") end
+    return
+  end
+  local v = {}
+  for k, n in prev:gmatch("(%a+)=(%d+)") do v[k] = tonumber(n) end
+  local total = 0
+  for _, state in ipairs(REVIEW_STATES) do total = total + (v[state] or 0) end
+  if not explicit and ((v.reviews or 0) == 0 or total == 0) then return end
+  tex.sprint("\\par\\begingroup\\attribute" .. attr .. "=" .. EXCLUDED .. "\\relax\\medskip\\noindent")
+  if total == 0 then
+    tex.sprint("\\textit{(No AI-origin words in the typeset document.)}\\par\\endgroup")
+    return
+  end
+  if full_width then
+    tex.sprint("\\begin{tabular*}{\\linewidth}{@{}l@{\\extracolsep{\\fill}}rr@{}}")
+  else
+    tex.sprint("\\begin{tabular}{@{}l@{\\hspace{1.5em}}rr@{}}")
+  end
+  tex.sprint("AI review progress (typeset words)&Words&\\%\\\\\\hline")
+  for _, state in ipairs(REVIEW_STATES) do
+    local n = v[state] or 0
+    tex.sprint(string.format("%s&%s&%s\\\\", REVIEW_LABELS[state], group_digits(n), pct(n, total)))
+  end
+  tex.sprint(string.format("\\hline AI-origin total&\\textbf{%s}&%s\\\\", group_digits(total), pct(total, total)))
+  tex.sprint((full_width and "\\end{tabular*}" or "\\end{tabular}") .. "\\par\\endgroup")
+end
+
 function M.typeset_summary(full_width)
   local prev = M.previous
   if not prev or prev == "" then
@@ -473,6 +536,7 @@ function M.typeset_summary(full_width)
   end
   tex.sprint(string.format("\\hline&Total&\\textbf{%s}&%s&\\textbf{%s}&%s\\\\", group_digits(tc), pct(tc, tc), words(tw), wpct(tw)))
   tex.sprint((full_width and "\\end{tabular*}" or "\\end{tabular}") .. "\\endgroup")
+  M.typeset_review_progress(full_width, false)
   M.typeset_review_legend()
 end
 
