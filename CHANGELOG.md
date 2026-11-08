@@ -9,6 +9,8 @@ Versions before 0.1.20 are listed on the
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-11-08
+
 ### Added
 
 - Review progress for AI-origin words. When a document contains reviewed or revised
@@ -63,7 +65,8 @@ Versions before 0.1.20 are listed on the
   appear beside the opening marker and on hover. Review bars in the PDF are
   unchanged.
 
-[Unreleased]: https://github.com/odv-hu/tex-authorship/compare/v0.1.22...HEAD
+[Unreleased]: https://github.com/odv-hu/tex-authorship/compare/v0.1.23...HEAD
+[0.1.23]: https://github.com/odv-hu/tex-authorship/compare/v0.1.22...v0.1.23
 [0.1.22]: https://github.com/odv-hu/tex-authorship/compare/v0.1.21...v0.1.22
 [0.1.21]: https://github.com/odv-hu/tex-authorship/compare/v0.1.20...v0.1.21
 [0.1.20]: https://github.com/odv-hu/tex-authorship/compare/v0.1.19...v0.1.20
