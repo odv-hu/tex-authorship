@@ -26,6 +26,15 @@ Each run uses a temporary workspace, settings profile, extension directory and
 TEXMFHOME. Automatic LaTeX installation is disabled. It does not install into the
 normal editor profile or personal TeX tree. The runner prints its retained log path.
 
+Besides unmark, undo/redo, stale reviews, colour providers and highlighting, the suite
+runs the interactive flows with injected answers: the test replaces the quick pick,
+open dialog and message functions and sets the clipboard itself. Covered are normal
+paste, *Paste as…* as an author, as the owner and cancelled, *Mark Selection* with an
+author and cancelled, and the bibliography picker (search fields, a missing `.bib`, a
+duplicate key, choosing other files, reassigning and removing a source). Choosing one of
+the paste options after a normal paste stays manual: `editor.action.pasteAs` with a kind
+did not apply the extension's option in CI on 1.100 or stable.
+
 Automated coverage: actual unmark and undo/redo commands; document-change events,
 stale-review diagnostics and review removal; document colour providers and colour
 presentations; theme changes and highlighting toggles. Theme smoke tests do not
