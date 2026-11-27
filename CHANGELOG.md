@@ -9,6 +9,22 @@ Versions before 0.1.20 are listed on the
 
 ## [Unreleased]
 
+### Added
+
+- Setting `texAuthorship.verbatimEnvironments` for verbatim-like environments defined
+  in a class or package, where markers can't go.
+
+### Fixed
+
+- Paste options, *Paste as…* and *Mark Selection* refuse the same places: inside
+  `\verb`, `\lstinline`, `\mintinline`, the URL of `\url` and `\href`, and verbatim-like
+  environments, including ones the document defines with `\newminted`,
+  `\lstnewenvironment`, `\DefineVerbatimEnvironment` or `\newtcblisting`. The paste
+  options no longer appear there.
+- Unmark, review and *Associate Source* refuse marker-like lines inside a verbatim-like
+  environment, which are text there, and document cleanup leaves them in place.
+- Pasting as an author at a cursor on a line that has a `\url` or `\verb` elsewhere works.
+
 ## [0.1.23] - 2026-11-08
 
 ### Added

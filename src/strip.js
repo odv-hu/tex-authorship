@@ -5,9 +5,12 @@ const V = require('./reviews');
 
 /** Remove this package's source syntax, without interpreting arbitrary TeX.
  * Throw before editing for unsupported/malformed authorship commands.
- * @param {string} text @param {string} [footer] @returns {string}
+ * @param {string} text @param {string} [footer]
+ * @param {string[]} [extraVerbatim] verbatim-like environments beyond the detected ones
+ * @returns {string}
  */
-function stripAuthorship(text, footer = '') {
+function stripAuthorship(text, footer = '', extraVerbatim = []) {
+  const verbatim = M.verbatimEnvironments(text.split(/\r?\n/), extraVerbatim);
   let insertedFooter = false;
   /** @type {Record<string, number>} */
   const arity = {AuthorshipOwner:1, AuthorshipColor:2, AuthorshipGradient:2,
@@ -88,7 +91,7 @@ function stripAuthorship(text, footer = '') {
       skip();
       if (text[i] === '{') {
         const env = group();
-        if (/^(?:verbatim|Verbatim|lstlisting|minted|comment|alltt|filecontents)\*?$/.test(env)) {
+        if (verbatim.has(env.replace(/\*$/, ''))) {
           const close = '\\end{' + env + '}', end = text.indexOf(close,i);
           i = end < 0 ? text.length : end+close.length;
           out += text.slice(start,i); continue;
@@ -110,7 +113,7 @@ function stripAuthorship(text, footer = '') {
       if (/(?:^|\/)authorship\.sty$/.test(file.trim())) {
         const yes = group(), no = group();
         // Only the package guard is disposable; never discard unrelated branch content.
-        if ([yes,no].some(branch => stripAuthorship(branch).replace(/%[^\r\n]*/g,'').trim())) throw fail();
+        if ([yes,no].some(branch => stripAuthorship(branch, '', extraVerbatim).replace(/%[^\r\n]*/g,'').trim())) throw fail();
         removeLineRemainder(); continue;
       }
       i = saved;

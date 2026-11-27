@@ -29,10 +29,10 @@ function countsTable(totals,eol) {
     '\\end{tabular}\\par', ''
   ].join(eol);
 }
-/** @param {string} text @param {string} aux */
-function prepareSubmission(text,aux) {
-  const clean = stripAuthorship(text);
+/** @param {string} text @param {string} aux @param {string[]} [extraVerbatim] */
+function prepareSubmission(text,aux,extraVerbatim = []) {
+  const clean = stripAuthorship(text,'',extraVerbatim);
   const table = countsTable(totalsFromAux(aux),text.includes('\r\n')?'\r\n':'\n');
-  return stripAuthorship(clean,table);
+  return stripAuthorship(clean,table,extraVerbatim);
 }
 module.exports = {totalsFromAux,countsTable,prepareSubmission};

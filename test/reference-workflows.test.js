@@ -17,7 +17,7 @@ function harness(text, source = 'smith2024', options = {}) {
   const selection = new Range(0,0,0,lines[0].length);selection.isEmpty=false;selection.active=new Position(0,0);
   const editor = {document:doc,selection,selections:[selection],edit:async fn=>{fn({replace:(range,text)=>edits.push({range,text}),insert:(position,text)=>edits.push({position,text}),delete:range=>edits.push({range,deleted:true})});return true;}};
   const kind = {append:()=>kind};
-  const vscode = {Position,Range,EndOfLine:{CRLF:2},DocumentDropOrPasteEditKind:{Empty:kind},OverviewRulerLane:{Left:1},DecorationRangeBehavior:{ClosedClosed:1},
+  const vscode = {Position,Range,EndOfLine:{CRLF:2},DocumentPasteEdit:class { constructor(insertText,title){this.insertText=insertText;this.title=title;} },DocumentDropOrPasteEditKind:{Empty:kind},OverviewRulerLane:{Left:1},DecorationRangeBehavior:{ClosedClosed:1},
     env:{clipboard:{readText:async()=> 'Pasted text.'}},
     workspace:{getConfiguration:()=>({get:key=>key==='authors'?[{label:'Custom reference',kind:'reference',color:'#888888'}]:undefined})},
     window:{createTextEditorDecorationType:options=>{decorations.push(options);return options;},activeTextEditor:editor,showQuickPick:async items=>items.find(i=>i.author?.kind==='reference') || items.find(i=>i.key?.startsWith('@')),showWarningMessage:msg=>warnings.push(msg),showInformationMessage:msg=>warnings.push(msg)}};
@@ -25,7 +25,7 @@ function harness(text, source = 'smith2024', options = {}) {
   Object.assign(vscode.workspace, options.workspace);
   vscode.Uri = {file:fsPath=>({scheme:'file',fsPath})};
   const context={module:{exports:{}},require:name=>name==='vscode'?vscode:name==='./history' && options.history?options.history:name==='./references'?{pickSource:async()=> typeof source === 'function'?source(doc):source}:require(name.startsWith('.')?path.resolve(__dirname,'../src',name):name),console,Buffer,Error,setTimeout,clearTimeout};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark,cmdReview,cmdStripAuthorship,cmdRestoreAuthorship,decorationFor};',context);
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/extension.js'),'utf8')+'\nmodule.exports={cmdMarkSelection,cmdPasteAs,cmdAssociateSource,cmdUnmark,cmdReview,cmdStripAuthorship,cmdRestoreAuthorship,decorationFor,pasteProvider};',context);
   return {...context.module.exports,edits,warnings,editor,doc,decorations};
 }
 
@@ -59,6 +59,75 @@ test('associate replaces metadata only, remove source keeps passage, unmark remo
 test('selection crossing marker lines or verbatim does not open an edit',async()=>{
   const h=harness('%[*Reference]\nText\n%[/*Reference]');await h.cmdMarkSelection();assert.equal(h.edits.length,0);
   const v=harness('\\verb|text|');await v.cmdMarkSelection();assert.equal(v.edits.length,0);
+});
+
+// #7: every command that inserts markers refuses positions inside inline verbatim, URL
+// arguments and verbatim-like environments, including ones the document defines or the
+// texAuthorship.verbatimEnvironments setting lists.
+/** @param {any} h @param {number} line @param {number} from @param {number} [to] */
+function select(h,line,from,to=from){const sel={start:{line,character:from},end:{line,character:to},isEmpty:from===to,active:{line,character:from}};h.editor.selection=sel;h.editor.selections=[sel];return sel;}
+const INLINE=[
+  ['\\verb','Say \\verb|50% off| now.','50'],
+  ['\\verb','Say \\verb*+50% off+ now.','50'],
+  ['\\lstinline','Say \\lstinline[language=C]{a%b} now.','a%b'],
+  ['\\lstinline','Say \\lstinline!a%b! now.','a%b'],
+  ['\\mintinline','Say \\mintinline{python}|x%y| now.','x%y'],
+  ['\\url','See \\url{https://example.org/a%20b} now.','example'],
+  ['\\href','See \\href{https://example.org/%7E}{the site} now.','example'],
+];
+const withSetting=(setting)=>({workspace:{getConfiguration:()=>({get:key=>key==='verbatimEnvironments'?setting:key==='authors'?[{label:'Custom reference',kind:'reference',color:'#888888'}]:undefined})}});
+for (const [command,text,inside] of INLINE) {
+  test(`inline ${command}: paste options, Paste as… and Mark Selection refuse a position inside it`,async()=>{
+    const at=text.indexOf(inside)+1;
+    for (const name of ['cmdPasteAs','cmdMarkSelection']) {
+      const h=harness(text,null);select(h,0,at,name==='cmdPasteAs'?at:at+1);await h[name]();
+      assert.equal(h.edits.length,0,name);assert.equal(h.warnings.length,1,name);
+      assert.match(h.warnings[0],new RegExp('inside a \\'+command+' argument'),name);
+    }
+    const p=harness(text,null);const sel=select(p,0,at);
+    const edits=await p.pasteProvider.provideDocumentPasteEdits(p.doc,[sel],{get:()=>({asString:async()=>'Pasted.'})},{}, {isCancellationRequested:false});
+    assert.equal(edits,undefined);
+    // Outside the argument, at the end of the line, pasting as an author still works.
+    const ok=harness(text,null);select(ok,0,text.length);await ok.cmdPasteAs();assert.equal(ok.edits.length,1);
+    const offered=harness(text,null);const end=select(offered,0,text.length);
+    assert.ok((await offered.pasteProvider.provideDocumentPasteEdits(offered.doc,[end],{get:()=>({asString:async()=>'Pasted.'})},{}, {isCancellationRequested:false})).length>1);
+  });
+}
+
+const CUSTOM=[
+  ['\\newminted','\\newminted{python}{}','pythoncode',{}],
+  ['\\newminted with a name','\\newminted[snippet]{python}{}','snippet',{}],
+  ['\\lstnewenvironment','\\lstnewenvironment{code}[1][]{}{}','code',{}],
+  ['\\DefineVerbatimEnvironment','\\DefineVerbatimEnvironment{Shell}{Verbatim}{}','Shell',{}],
+  ['\\newtcblisting','\\newtcblisting{listing}{}','listing',{}],
+  ['the texAuthorship.verbatimEnvironments setting','% defined in a class file','mycode',withSetting(['mycode'])],
+];
+for (const [how,definition,env,options] of CUSTOM) {
+  test(`custom verbatim environment from ${how}: every editing command refuses it`,async()=>{
+    const text=[definition,'\\begin{'+env+'}','x = 50% of y','%[&AI: Claude]','print(1)','%[/&AI: Claude]','\\end{'+env+'}','After.'].join('\n');
+    for (const name of ['cmdPasteAs','cmdMarkSelection']) {
+      const h=harness(text,null,options);select(h,2,2,name==='cmdPasteAs'?2:5);await h[name]();
+      assert.equal(h.edits.length,0,name);assert.match(h.warnings[0],new RegExp('inside the '+env+' environment'),name);
+    }
+    const p=harness(text,null,options);const sel=select(p,2,2);
+    assert.equal(await p.pasteProvider.provideDocumentPasteEdits(p.doc,[sel],{get:()=>({asString:async()=>'Pasted.'})},{}, {isCancellationRequested:false}),undefined);
+    for (const name of ['cmdUnmark','cmdReview']) {
+      const h=harness(text,null,options);select(h,4,0);await h[name]('reviewed');
+      assert.equal(h.edits.length,0,name);assert.match(h.warnings[0],new RegExp('inside the '+env+' environment, where its marker lines are text'),name);
+    }
+    const ref=harness(text.replace(/&AI: Claude/g,'*Reference'),'key',options);select(ref,4,0);await ref.cmdAssociateSource();
+    assert.equal(ref.edits.length,0);assert.match(ref.warnings[0],/where its marker lines are text/);
+    // Outside the environment the same commands work.
+    const ok=harness(text,null,options);select(ok,7,6);await ok.cmdPasteAs();assert.equal(ok.edits.length,1);
+  });
+}
+
+test('submission cleanup keeps marker-like lines inside custom verbatim environments',()=>{
+  const S=require('../src/strip');
+  const text=['\\lstnewenvironment{code}{}{}','\\begin{code}','%[&AI: Claude]','\\end{code}','%[&AI: Claude]','Text','%[/&AI: Claude]',''].join('\n');
+  assert.equal(S.stripAuthorship(text),['\\lstnewenvironment{code}{}{}','\\begin{code}','%[&AI: Claude]','\\end{code}','Text',''].join('\n'));
+  const listed=['\\begin{mycode}','%[&AI: Claude]','\\end{mycode}',''].join('\n');
+  assert.equal(S.stripAuthorship(listed,'',['mycode']),listed);
 });
 
 function sourcePicker(files, active, choices, candidates = []) {

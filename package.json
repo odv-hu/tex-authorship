@@ -245,6 +245,12 @@
           "default": "Mine",
           "description": "Name for your own (unmarked) text in the status bar and paste menu. An \\AuthorshipOwner{...} line in your .tex files takes precedence."
         },
+        "texAuthorship.verbatimEnvironments": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra verbatim-like environments where markers can't go, for environments defined outside the document (in a class or package). verbatim, lstlisting, minted and the like, and environments the document defines with \\newminted, \\lstnewenvironment, \\DefineVerbatimEnvironment or \\newtcblisting, are detected without this."
+        },
         "texAuthorship.installLatexPackage": {
           "type": "boolean",
           "default": true,
