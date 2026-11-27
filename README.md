@@ -61,7 +61,8 @@ Run *Authorship: Copy LaTeX Package into This Project* to include the two files 
 ```latex
 \IfFileExists{authorship.sty}{\usepackage{authorship}}{%
   \providecommand\AuthorshipOwner[1]{}\providecommand\AuthorshipColor[2]{}%
-  \providecommand\AuthorshipGradient[2]{}\providecommand\AuthorshipSummary{}}
+  \providecommand\AuthorshipGradient[2]{}\providecommand\AuthorshipSummary{}%
+  \providecommand\AuthorshipLabel[2]{}}
 ```
 
 ## Use
@@ -252,6 +253,20 @@ fresh single-column page.
 Use it at document level, outside lists, boxes, floats and `multicols`.
 The table must fit on one page. Hidden mode and pdfLaTeX omit it entirely.
 The existing `\AuthorshipSummary` keeps its inline layout.
+
+The table labels can be set in the document's language, one key at a time:
+
+```latex
+\AuthorshipLabel{author}{Szerző}
+\AuthorshipLabel{characters}{Karakterek}
+\AuthorshipLabel{words}{Szavak}
+\AuthorshipLabel{total}{Összesen}
+```
+
+The other keys are `progress`, `unreviewed`, `reviewed`, `revised`, `changed` and
+`aitotal` for the review-progress table, and `legend`, `legendreviewed`,
+`legendrevised` and `legendchanged` for the review legend.
+[ADR-0022](docs/adr/0022-localised-summary-labels.md) lists their English defaults.
 
 ## Settings
 
