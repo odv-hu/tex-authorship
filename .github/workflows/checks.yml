@@ -68,7 +68,7 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: test/pdf-requirements.txt
-      - run: sudo apt-get update && sudo apt-get install -y texlive-luatex texlive-latex-extra texlive-fonts-recommended poppler-utils
+      - run: sudo apt-get update && sudo apt-get install -y texlive-luatex texlive-latex-extra texlive-fonts-recommended texlive-publishers poppler-utils
       - run: python -m pip install -r test/pdf-requirements.txt
       - run: python test/pdf-regression.py --output "$RUNNER_TEMP/pdf-regression"
       - uses: actions/upload-artifact@v4
