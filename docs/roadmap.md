@@ -52,9 +52,10 @@ version-aligned tagged commit produces both inspected artifacts reproducibly.
 
 ### 2. Real VS Code integration and visual checks
 
-Initial suite covers unmark/undo/redo, stale diagnostics, review removal, colour
-providers and theme/highlighting smoke checks in an isolated editor. A manual
-checklist is documented. Picker/clipboard automation and visual assertions remain.
+The suite covers unmark/undo/redo, stale diagnostics, review removal, colour
+providers, theme/highlighting smoke checks, and with injected picker answers explicit
+paste, marking, cancellation and the bibliography picker. Choosing a paste option after
+a normal paste and visual assertions remain manual.
 
 - Run tests in an actual extension host, for example with `@vscode/test-electron`.
 - Exercise normal paste options, explicit paste, marking/unmarking, bibliography
