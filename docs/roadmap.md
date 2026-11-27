@@ -72,10 +72,11 @@ visual cases have repeatable checks or an explicit manual release checklist.
 
 ### 3. Automated PDF regression checks
 
-Initial runner covers review metadata across rendering/citation modes, legends,
-footnotes, included/nested multi-page text, floats and full-width-summary counts.
-Source metadata, broader layout assertions and automated bar/colour inspection
-remain; generated previews support manual review.
+The runner covers review and source metadata across rendering/citation modes,
+legends, reviewer bar and legend colours, footnotes, included/nested multi-page text,
+floats, full-width-summary counts and width, and two-column `article`, `elsarticle`
+and two-sided `report`. Failures keep PNG previews in the CI artifact. Visual review
+of bar placement near other margin material remains manual.
 
 - Turn the existing fixture compilations and comparisons into a repository-owned runner
   and CI checks, with temporary outputs outside tracked sources.

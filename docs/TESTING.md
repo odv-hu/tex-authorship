@@ -34,7 +34,8 @@ manual coverage; mocked command tests remain useful alongside this suite.
 
 ## PDF regression runner
 
-Install LuaLaTeX, pdfLaTeX and Poppler (`pdftoppm`), plus Python dependencies:
+Install LuaLaTeX, pdfLaTeX, the publisher classes (`texlive-publishers` on Debian and
+Ubuntu) and Poppler (`pdftoppm`), plus Python dependencies:
 
 ```sh
 python3 -m pip install -r test/pdf-requirements.txt
@@ -55,8 +56,15 @@ AI-origin words, keep a nested passage in its own state, and appear only with re
 metadata or the explicit `\AuthorshipReviewProgress` command. Comparisons stay within the same citation mode:
 bold citation styling may legitimately change wrapping. These are semantic and
 geometry checks, not pixel-perfect visual snapshots or a journal word-count audit.
-Source-metadata coverage, more document classes and full-width layout assertions
-remain follow-on work.
+Reviewer bars are checked in the left margin in the reviewer's colour (single for
+reviewed, double for revised, short when changed since review, none on owner lines),
+and each legend swatch must have the colour of the reviewer it names. Reference
+passages with `% authorship-source:` metadata must keep glyphs and counts. Two-column
+`article`, `elsarticle` (from `texlive-publishers`) and two-sided `report` repeat the
+geometry and count comparison, and their full-width summary must span `\textwidth`,
+on a fresh page in the two-column case. When a check fails, the runner writes a PNG
+preview of every PDF built so far next to it; CI uploads them as the
+`pdf-regression` artifact.
 
 ## Manual visual and interaction checklist
 
