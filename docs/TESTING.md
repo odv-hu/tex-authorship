@@ -52,7 +52,9 @@ citation-emphasis, natbib, hidden, pdfLaTeX and package-free variants. It also c
 stale warnings, review legends, footnotes, nested/included multi-page passages,
 floats and full-width-summary counts. Review progress counts must reconcile with the
 AI-origin words, keep a nested passage in its own state, and appear only with review
-metadata or the explicit `\AuthorshipReviewProgress` command. Comparisons stay within the same citation mode:
+metadata or the explicit `\AuthorshipReviewProgress` command. After only two runs the
+summary table must already show the final counts, so first-run placeholders stay out
+of the counts. Comparisons stay within the same citation mode:
 bold citation styling may legitimately change wrapping. These are semantic and
 geometry checks, not pixel-perfect visual snapshots or a journal word-count audit.
 Source-metadata coverage, more document classes and full-width layout assertions

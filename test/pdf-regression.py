@@ -16,9 +16,9 @@ for n in ['authorship.sty','authorship.lua']:shutil.copyfile(root/'latex'/n,out/
 env=os.environ.copy();cache=out/'tex-cache';cache.mkdir()
 env.update(TEXMFCACHE=str(cache),TEXMFVAR=str(cache))
 source=(root/'test/reviews.tex').read_text()
-def run(name,text,engine='lualatex'):
+def run(name,text,engine='lualatex',runs=3):
  (out/(name+'.tex')).write_text(text)
- for _ in range(3):
+ for _ in range(runs):
   p=subprocess.run([engine,'-interaction=nonstopmode','-halt-on-error',name+'.tex'],cwd=out,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=120)
   (out/(name+'-build.txt')).write_bytes(p.stdout)
   if p.returncode:raise RuntimeError(p.stdout.decode()[-4000:])
@@ -83,4 +83,12 @@ print('Legend excluded from counts; included-file/multi-page/nested/float geomet
 full=run('fullwidth',source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth'))
 assert 'AI review progress (typeset words)' in pdf_text('fullwidth')
 assert full[0]==run('fullwidth-plain', '\n'.join(l for l in source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth').split('\n') if not l.startswith('% authorship-review:')))[0]
-print('Full-width summary counts match; all PDF checks passed.')
+print('Full-width summary counts match.',flush=True)
+# First-run placeholders stay out of the counts (#23): after two runs the table already shows
+# the counts of the second run. Without citations, so no unresolved [?] changes the words.
+nocite=source.replace(r'\cite{x}','')
+two=run('two-runs',nocite,runs=2)
+table={m[0]:(int(m[1]),int(m[2])) for m in re.findall(r'^(Example Owner|ChatGPT|Total) ([\d,]+) [\d.]+ ?% ([\d,]+) [\d.]+ ?%$',pdf_text('two-runs').replace('AI: ChatGPT','ChatGPT'),re.M)}
+final={('Example Owner' if k=='Mine' else k.split(': ',1)[1]):(int(c),int(w)) for k,c,w in (re.match(r'^(.*)=(\d+),(\d+)$',e).groups() for e in two[0][-1].split('|'))}
+assert table and all(table[k]==v for k,v in final.items()),(table,final)
+print('Two runs give the final summary table; all PDF checks passed.')
