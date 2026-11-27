@@ -315,12 +315,18 @@ function wrappedFor(/** @type {vscode.TextDocument} */ doc, /** @type {vscode.Ra
   return M.wrapText(before, after, normalizeEol(text, eol), key, eol);
 }
 
-function verbatimGuard(/** @type {vscode.TextDocument} */ doc, /** @type {number} */ line) {
-  if (M.insideVerbatim(docLines(doc), line)) {
-    vscode.window.showWarningMessage('Authorship: this spot is inside a verbatim-like environment, where % is not a comment. Markers can\'t go here.');
-    return true;
-  }
-  return false;
+/** Verbatim-like environments the user lists in addition to the detected ones. */
+function verbatimExtra() {
+  const extra = cfg().get('verbatimEnvironments');
+  return Array.isArray(extra) ? extra.filter(e => typeof e === 'string') : [];
+}
+
+/** Refuse commands on a passage whose marker lines are verbatim text, not markers. */
+function verbatimBlockGuard(/** @type {string[]} */ lines, /** @type {{openLine: number}} */ block) {
+  const env = M.verbatimLines(lines.slice(0, block.openLine + 1), verbatimExtra())[block.openLine];
+  if (!env) return false;
+  vscode.window.showWarningMessage(`Authorship: this passage is inside the ${env} environment, where its marker lines are text, not markers. Edit them by hand.`);
+  return true;
 }
 
 // ---------- commands ----------
@@ -336,15 +342,8 @@ function currentDocument(/** @type {vscode.TextEditor} */ editor, /** @type {num
 
 /** @param {vscode.TextDocument} doc @param {vscode.Range} range */
 function safeRange(doc, range) {
-  const lines = docLines(doc);
-  const end = range.end.character === 0 && range.end.line > range.start.line ? range.end.line - 1 : range.end.line;
-  for (let i = range.start.line; i <= end; i++) {
-    if (verbatimGuard(doc, i)) return false;
-    if (M.parseMarkerLine(lines[i]) || M.isSourceComment(lines[i]) || V.isReview(lines[i]) || /\\(?:begin|end)\{(?:verbatim|Verbatim|lstlisting|minted|comment|alltt|filecontents)\*?\}/.test(lines[i]) || /\\(?:verb\*?|url)\b/.test(lines[i])) {
-      vscode.window.showWarningMessage('Authorship: select passage text without marker lines or verbatim commands.');
-      return false;
-    }
-  }
+  const problem = M.markerRangeProblem(docLines(doc), range.start, range.end, verbatimExtra());
+  if (problem) { vscode.window.showWarningMessage('Authorship: ' + problem); return false; }
   return true;
 }
 
@@ -391,13 +390,14 @@ async function cmdStripAuthorship() {
   if (!editor || !isTex(editor.document)) return;
   const doc = editor.document, original = doc.getText(), version = doc.version;
   try {
-    let clean = S.stripAuthorship(original);
+    const extra = verbatimExtra();
+    let clean = S.stripAuthorship(original, '', extra);
     if (clean === original) {
       vscode.window.showInformationMessage('Authorship: no removable syntax found in this document.'); return;
     }
     // Fragments have no document end and no document-wide table of their own.
     let main = false;
-    try { S.stripAuthorship(clean, '% count location\n'); main = true; }
+    try { S.stripAuthorship(clean, '% count location\n', extra); main = true; }
     catch (error) {
       if (!(error instanceof Error) || !error.message.startsWith('No document end found')) throw error;
     }
@@ -414,7 +414,7 @@ async function cmdStripAuthorship() {
         if (!chosen?.length || !currentDocument(editor,version)) return;
         aux = await vscode.workspace.fs.readFile(chosen[0]);
       }
-      clean = Submission.prepareSubmission(original,Buffer.from(aux).toString('utf8'));
+      clean = Submission.prepareSubmission(original,Buffer.from(aux).toString('utf8'),extra);
     }
     if (!currentDocument(editor,version)) return;
     const applied = await editor.edit(eb => eb.replace(
@@ -469,6 +469,7 @@ async function cmdAssociateSource() {
   if (!block || block.kind !== 'reference' || block.closeLine < 0) {
     vscode.window.showInformationMessage('Authorship: place the cursor inside a closed reference passage first.'); return;
   }
+  if (verbatimBlockGuard(lines, block)) return;
   const line = block.openLine + 1, hasSource = M.isSourceComment(lines[line] || '');
   const source = await R.pickSource(doc, hasSource ? M.sourceKey(lines[line]) : null);
   if (source === undefined || !currentDocument(editor,version)) return;
@@ -488,6 +489,7 @@ async function cmdReview(status) {
   if (!block || block.kind!=='ai' || block.closeLine<0 || parsed.problems.some(p=>p.line>=block.openLine && p.line<=block.closeLine)) {
     vscode.window.showInformationMessage('Authorship: place the cursor inside a correctly closed AI passage.');return;
   }
+  if (verbatimBlockGuard(lines, block)) return;
   const line=block.openLine+1, hasReview=V.isReview(lines[line] || '');
   let replacement='';
   if (status!=='remove') {
@@ -510,10 +512,11 @@ async function cmdReview(status) {
 async function cmdUnmark() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
-  const doc = editor.document;
-  const parsed = M.parseDocument(docLines(doc));
+  const doc = editor.document, lines = docLines(doc);
+  const parsed = M.parseDocument(lines);
   const b = M.blockAt(parsed, editor.selection.active.line);
   if (!b) { vscode.window.showInformationMessage('Authorship: the cursor is not inside a marked passage.'); return; }
+  if (verbatimBlockGuard(lines, b)) return;
   const fullLine = (/** @type {number} */ i) =>
     i + 1 < doc.lineCount ? new vscode.Range(i, 0, i + 1, 0) : doc.lineAt(i).rangeIncludingLineBreak;
   await editor.edit(eb => {
@@ -607,7 +610,8 @@ const pasteProvider = {
     const text = await item.asString();
     if (!text || token.isCancellationRequested) return;
     const range = ranges[0];
-    if (M.insideVerbatim(docLines(doc), range.start.line)) return;
+    // Same places as Paste as… and Mark Selection, but silent: plain paste still works.
+    if (M.markerRangeProblem(docLines(doc), range.start, range.end, verbatimExtra())) return;
 
     // Plain paste stays first, so nothing changes unless you pick another option.
     const owner = ownerFor(doc);

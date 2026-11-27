@@ -71,6 +71,42 @@ test('insideVerbatim', () => {
   assert.equal(M.insideVerbatim(lines, 0), false);
 });
 
+test('insideVerbatim: only the matching \\end closes, comments hide \\begin, extra names count', () => {
+  const lines = ['\\begin{verbatim}', '\\end{lstlisting}', 'still verbatim', '\\end{verbatim}', '% \\begin{verbatim}', 'free', '\\begin{mine}', 'x'];
+  assert.equal(M.insideVerbatim(lines, 2), true);
+  assert.equal(M.insideVerbatim(lines, 5), false);
+  assert.equal(M.insideVerbatim(lines, 7), false);
+  assert.equal(M.insideVerbatim(lines, 7, ['mine']), true);
+});
+
+test('inlineVerbatimSpans: commands, delimiters, open arguments, escaped backslash', () => {
+  const spans = (line) => M.inlineVerbatimSpans(line).map(s => line.slice(s.start, s.end));
+  assert.deepEqual(spans('a \\verb|x%| b \\verb*+y+ c'), ['\\verb|x%|', '\\verb*+y+']);
+  assert.deepEqual(spans('\\lstinline[style=x]{a%b} \\lstinline!c!'), ['\\lstinline[style=x]{a%b}', '\\lstinline!c!']);
+  assert.deepEqual(spans('\\mintinline{py}{a%b} \\mintinline[x]{py}|c|'), ['\\mintinline{py}{a%b}', '\\mintinline[x]{py}|c|']);
+  assert.deepEqual(spans('\\url{http://a/{b}%} \\href{http://c}{text} \\path{d%}'), ['\\url{http://a/{b}%}', '\\href{http://c}', '\\path{d%}']);
+  assert.deepEqual(spans('open \\url{http://a/b'), ['\\url{http://a/b']);
+  assert.deepEqual(spans('\\\\verb|x| \\verbatim \\urlstyle{same}'), []);
+});
+
+test('verbatimEnvironments: built-in, document-defined, commented definitions ignored', () => {
+  const envs = M.verbatimEnvironments(['\\newminted{python}{}', '\\newminted[snip]{c}{}', '\\lstnewenvironment{code}{}{}',
+    '\\DefineVerbatimEnvironment{Shell}{Verbatim}{}', '\\NewTCBListing{box}{ O{} }{}', '% \\lstnewenvironment{gone}{}{}'], ['extra']);
+  for (const e of ['verbatim', 'lstlisting', 'minted', 'pythoncode', 'snip', 'code', 'Shell', 'box', 'extra']) assert.ok(envs.has(e), e);
+  assert.ok(!envs.has('gone'));
+});
+
+test('markerRangeProblem: positions, selections, and safe spots', () => {
+  const lines = ['Text \\verb|a%b| more \\url{x}.', 'Plain line.'];
+  const at = (line, character) => ({ line, character });
+  assert.match(M.markerRangeProblem(lines, at(0, 12), at(0, 12)), /inside a \\verb argument/);
+  assert.equal(M.markerRangeProblem(lines, at(0, 5), at(0, 5)), null);           // before the command
+  assert.equal(M.markerRangeProblem(lines, at(0, 16), at(0, 16)), null);         // right after it
+  assert.match(M.markerRangeProblem(lines, at(0, 0), at(0, 20)), /without marker lines or verbatim commands/);
+  assert.equal(M.markerRangeProblem(lines, at(1, 0), at(1, 11)), null);
+  assert.match(M.markerRangeProblem(['%[&AI: X]', 'a', '%[/&AI: X]'], at(0, 0), at(2, 3)), /without marker lines/);
+});
+
 test('findAuthorshipColors: decimal and hex', () => {
   const line = '\\AuthorshipColor{AI: Claude}{0.80 0.05 0.45}   % per-author colour override';
   const [c] = M.findAuthorshipColors(line);

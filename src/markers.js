@@ -254,21 +254,172 @@ function countByAuthor(lines, parsed) {
   return { counts, total };
 }
 
-const VERBATIM_ENVS = ['verbatim', 'Verbatim', 'lstlisting', 'minted', 'comment', 'alltt', 'filecontents'];
+const VERBATIM_ENVS = ['verbatim', 'Verbatim', 'BVerbatim', 'LVerbatim', 'lstlisting', 'minted', 'comment', 'alltt', 'filecontents', 'tcblisting'];
+
+/** Strip TeX comments from a line (an unescaped % starts one). @param {string} line */
+function uncommented(line) {
+  const m = /(?:^|[^\\])(?:\\\\)*%/.exec(line);
+  return m ? line.slice(0, m.index + m[0].length - 1) : line;
+}
+
+/**
+ * Names of verbatim-like environments: the built-in ones, those the document defines
+ * (\newminted, \lstnewenvironment, fancyvrb's \DefineVerbatimEnvironment and
+ * \RecustomVerbatimEnvironment, tcolorbox's \newtcblisting and \NewTCBListing), and
+ * extra names, for example from the texAuthorship.verbatimEnvironments setting.
+ * @param {string[]} lines @param {string[]} [extra] @returns {Set<string>}
+ */
+function verbatimEnvironments(lines, extra = []) {
+  const names = new Set(VERBATIM_ENVS);
+  for (const name of extra) if (typeof name === 'string' && name.trim()) names.add(name.trim());
+  for (const raw of lines) {
+    const line = uncommented(raw);
+    for (const m of line.matchAll(/\\newminted\s*(?:\[([^\]]*)\])?\s*\{([^{}]*)\}/g)) names.add((m[1] || m[2] + 'code').trim());
+    for (const m of line.matchAll(/\\(?:lstnewenvironment|DefineVerbatimEnvironment|RecustomVerbatimEnvironment|newtcblisting|renewtcblisting|NewTCBListing|RenewTCBListing|DeclareTCBListing)\s*(?:\[[^\]]*\]\s*)?\{\s*\\?([^{}\s]+)\s*\}/g)) names.add(m[1]);
+  }
+  return names;
+}
+
+/** @param {Set<string>} names */
+function envPattern(names) {
+  const alternatives = [...names].map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return new RegExp(`\\\\(begin|end)\\s*\\{(${alternatives})\\*?\\}`, 'g');
+}
+
+/**
+ * For each line, the verbatim-like environment it lies inside, or null.
+ * The \begin and \end lines themselves count as outside.
+ * @param {string[]} lines @param {string[]} [extra] @returns {(string|null)[]}
+ */
+function verbatimLines(lines, extra = []) {
+  const re = envPattern(verbatimEnvironments(lines, extra));
+  /** @type {(string|null)[]} */
+  const out = [];
+  /** @type {string|null} */
+  let open = null;
+  for (const line of lines) {
+    out.push(open);
+    re.lastIndex = 0;
+    /** @type {RegExpExecArray | null} */
+    let m;
+    // Inside verbatim only the matching \end counts; outside, comments hide \begin.
+    const text = open ? line : uncommented(line);
+    while ((m = re.exec(text))) {
+      if (open === null && m[1] === 'begin') open = m[2];
+      else if (open !== null && m[1] === 'end' && m[2] === open) open = null;
+    }
+  }
+  return out;
+}
 
 /**
  * Is a line inside a verbatim-like environment, where % is not a comment?
- * @param {string[]} lines @param {number} line
+ * @param {string[]} lines @param {number} line @param {string[]} [extra]
  */
-function insideVerbatim(lines, line) {
-  const re = new RegExp(`\\\\(begin|end)\\{(${VERBATIM_ENVS.join('|')})\\*?\\}`, 'g');
-  let open = null;
-  for (let i = 0; i < line; i++) {
-    let m;
-    re.lastIndex = 0;
-    while ((m = re.exec(lines[i]))) open = m[1] === 'begin' ? m[2] : null;
+function insideVerbatim(lines, line, extra = []) {
+  return verbatimLines(lines.slice(0, line + 1), extra)[line] != null;
+}
+
+/**
+ * Inline material on one line where % is not a comment: \verb, \lstinline, \mintinline,
+ * and the URL argument of \url, \path, \nolinkurl and \href. An argument left open runs
+ * to the end of the line.
+ * @param {string} line
+ * @returns {{command: string, start: number, end: number}[]} start at the backslash, end after the closing delimiter
+ */
+function inlineVerbatimSpans(line) {
+  /** @type {{command: string, start: number, end: number}[]} */
+  const spans = [];
+  const re = /\\(verb\*?|lstinline|mintinline|url|path|nolinkurl|href)(?![A-Za-z@])/g;
+  /** @type {RegExpExecArray | null} */
+  let m;
+  while ((m = re.exec(line))) {
+    // An odd run of backslashes before it makes this \\ followed by letters, not a command.
+    if ((/\\*$/.exec(line.slice(0, m.index)) || [''])[0].length % 2) continue;
+    const command = m[1].replace('*', '');
+    let i = m.index + m[0].length;
+    const skipSpaces = () => { if (command !== 'verb') while (line[i] === ' ' || line[i] === '\t') i++; };
+    const optional = () => { skipSpaces(); if (line[i] === '[') { const e = line.indexOf(']', i); i = e < 0 ? line.length : e + 1; } };
+    /** Braced argument without nesting (verbatim) or with nesting (URLs). @param {boolean} nested */
+    const braced = nested => {
+      let depth = 0;
+      for (; i < line.length; i++) {
+        if (nested && line[i] === '\\') { i++; continue; }
+        if (line[i] === '{') { if (nested || depth === 0) depth++; }
+        else if (line[i] === '}' && --depth === 0) { i++; return; }
+      }
+    };
+    const delimited = () => {
+      if (i >= line.length) return;
+      if (line[i] === '{' && command !== 'verb') { braced(command === 'url' || command === 'path' || command === 'nolinkurl' || command === 'href'); return; }
+      const d = line[i], e = line.indexOf(d, i + 1);
+      i = e < 0 ? line.length : e + 1;
+    };
+    if (command === 'lstinline') optional();
+    if (command === 'mintinline') { optional(); skipSpaces(); if (line[i] === '{') braced(false); }
+    if (command === 'href') { optional(); }
+    skipSpaces();
+    delimited();
+    spans.push({ command: '\\' + command, start: m.index, end: Math.max(i, m.index + m[0].length) });
+    re.lastIndex = Math.max(re.lastIndex, i);
   }
-  return open !== null;
+  return spans;
+}
+
+/**
+ * Why markers can't go at a position or around a range, or null when they can.
+ * Checks verbatim-like environments (built-in, document-defined and extra names)
+ * on every line of the range, and inline verbatim and URL arguments at both ends.
+ * @param {string[]} lines
+ * @param {{line: number, character: number}} start
+ * @param {{line: number, character: number}} [end]
+ * @param {string[]} [extra]
+ * @returns {string | null}
+ */
+function verbatimProblem(lines, start, end = start, extra = []) {
+  const inside = verbatimLines(lines.slice(0, end.line + 1), extra);
+  for (let i = start.line; i <= end.line; i++) {
+    if (inside[i]) return `this spot is inside the ${inside[i]} environment, where % is not a comment. Markers can't go here.`;
+  }
+  for (const pos of start === end ? [start] : [start, end]) {
+    for (const s of inlineVerbatimSpans(lines[pos.line] || '')) {
+      if (pos.character > s.start && pos.character < s.end) {
+        return `this spot is inside a ${s.command} argument, where % is not a comment. Markers can't go here.`;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Why a passage can't be wrapped in markers at a range, or null. Shared by every command
+ * that inserts markers, so they refuse the same places:
+ * - a position inside a verbatim-like environment or an inline verbatim/URL argument
+ *   (verbatimProblem);
+ * - a selection containing marker, source or review lines, the \begin or \end of a
+ *   verbatim-like environment, or inline verbatim/URL commands.
+ * @param {string[]} lines
+ * @param {{line: number, character: number}} start
+ * @param {{line: number, character: number}} end
+ * @param {string[]} [extra]
+ * @returns {string | null}
+ */
+function markerRangeProblem(lines, start, end, extra = []) {
+  const problem = verbatimProblem(lines, start, end, extra);
+  if (problem) return problem;
+  if (start.line === end.line && start.character === end.character) return null;
+  const envs = envPattern(verbatimEnvironments(lines, extra));
+  const last = end.character === 0 && end.line > start.line ? end.line - 1 : end.line;
+  for (let i = start.line; i <= last; i++) {
+    const line = lines[i] || '';
+    const from = i === start.line ? start.character : 0, to = i === end.line ? end.character : line.length;
+    envs.lastIndex = 0;
+    if (parseMarkerLine(line) || isSourceComment(line) || /^\s*%\s*authorship-review:/.test(line) || envs.test(line) ||
+        inlineVerbatimSpans(line).some(s => s.start < to && s.end > from)) {
+      return 'select passage text without marker lines or verbatim commands.';
+    }
+  }
+  return null;
 }
 
 /**
@@ -393,7 +544,7 @@ function formatColor(rgb, style) {
 module.exports = {
   findAuthorshipColors, collectColors, lookupColor, findOwner, parseColor, formatColor, isHexColor,
   MARKER_RE, PREFIX_KIND, KIND_PREFIX,
-  parseMarkerLine, parseDocument, blockAt, wrapText, countByAuthor, bodyRange, countWords, insideVerbatim,
+  parseMarkerLine, parseDocument, blockAt, wrapText, countByAuthor, bodyRange, countWords, insideVerbatim, verbatimEnvironments, verbatimLines, inlineVerbatimSpans, verbatimProblem, markerRangeProblem,
   authorKey, openTag, closeTag, stripComment,
   sourceComment, sourceKey, isSourceComment,
 };

@@ -93,8 +93,6 @@ artifacts on failure, rather than depending on one-off local scripts.
 
 ### 4. LaTeX and document-discovery robustness
 
-- Improve and test consistent protection against markers in inline verbatim, URLs and
-  custom verbatim environments across all editing workflows.
 - Address known PDF gaps: explicit `\textcolor` spanning line breaks and running heads
   inside `multicols` (ADR-0005).
 - Test and document narrow margins, two-column layouts and reviewer bars near other

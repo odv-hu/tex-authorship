@@ -264,6 +264,7 @@ The existing `\AuthorshipSummary` keeps its inline layout.
 | `texAuthorship.markerOpacity` | `0.4` | How faded the marker lines are |
 | `texAuthorship.installLatexPackage` | `true` | Keep the LaTeX package installed and up to date in your personal TeX folder (also: *Authorship: Install LaTeX Package for All Documents*) |
 | `texAuthorship.draftRecipe` | `latexmk (lualatex)` | LaTeX Workshop recipe for the coloured draft |
+| `texAuthorship.verbatimEnvironments` | `[]` | Extra verbatim-like environments, defined in a class or package, where markers can't go |
 
 Adding a co-author:
 
@@ -280,7 +281,8 @@ Adding a co-author:
 - **Marking is per passage, not per character.** Edits you make inside an AI (e.g. Claude) passage stay attributed to that AI until you unmark it.
 Treat a marked passage as "AI-originated, possibly edited by me".
 - Markers sit on their own lines. Where a line break would add a space TeX didn't have before, the extension ends the line with `%`, so the PDF reads exactly as if you had pasted inline.
-- Markers can't go inside `verbatim`, `lstlisting`, `minted` and similar environments, where `%` isn't a comment.
+- Markers can't go inside `verbatim`, `lstlisting`, `minted` and similar environments, where `%` isn't a comment, or inside `\verb`, `\lstinline`, `\mintinline` and the URL of `\url` and `\href`.
+Environments the document defines with `\newminted`, `\lstnewenvironment`, `\DefineVerbatimEnvironment` or `\newtcblisting` count too; list ones defined in a class or package in `texAuthorship.verbatimEnvironments`.
 The extension refuses to put them there.
 - Unmatched or mismatched markers show up as warnings in the Problems panel.
 - In the PDF, LuaLaTeX reads each marker line before TeX discards the comment and tags every character in the passage with its author.
