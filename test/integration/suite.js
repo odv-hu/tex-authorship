@@ -109,7 +109,8 @@ async function interactiveFlows(dir) {
    for (let i=0;i<40 && doc.getText()==='Before after.\n';i++) await wait(50);
    await vscode.commands.executeCommand('workbench.action.closeQuickOpen');
    if (doc.getText()===wrapped) { used=Object.keys(args)[0]; break; }
-   while (doc.getText()!=='Before after.\n') await vscode.commands.executeCommand('undo');
+   for (let i=0;i<5 && doc.getText()!=='Before after.\n';i++) await vscode.commands.executeCommand('undo');
+   assert.equal(doc.getText(),'Before after.\n');
   }
   assert.ok(used,'No editor.action.pasteAs argument applied the AI: ChatGPT paste option');
   console.log('editor.action.pasteAs argument used: '+used);
