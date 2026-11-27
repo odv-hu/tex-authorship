@@ -83,4 +83,19 @@ print('Legend excluded from counts; included-file/multi-page/nested/float geomet
 full=run('fullwidth',source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth'))
 assert 'AI review progress (typeset words)' in pdf_text('fullwidth')
 assert full[0]==run('fullwidth-plain', '\n'.join(l for l in source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth').split('\n') if not l.startswith('% authorship-review:')))[0]
-print('Full-width summary counts match; all PDF checks passed.')
+print('Full-width summary counts match.',flush=True)
+# Localised labels (#14, ADR-0022): every label can be set, the counts stay the same,
+# and an unknown key only warns.
+HU={'author':'Szerző','characters':'Karakterek','words':'Szavak','total':'Összesen',
+ 'progress':'MI-ellenőrzés','unreviewed':'Ellenőrizetlen','reviewed':'Ellenőrzött',
+ 'revised':'Átdolgozott','changed':'Ellenőrzés óta változott','aitotal':'MI-eredetű összesen',
+ 'legend':'Ellenőrzők','legendreviewed':'Ellenőrizte','legendrevised':'Átdolgozta',
+ 'legendchanged':'Változott, ellenőrizte'}
+labels=''.join(r'\AuthorshipLabel{%s}{%s}'%kv+'\n' for kv in HU.items())+r'\AuthorshipLabel{nosuchlabel}{x}'+'\n'
+hu=run('labels',source.replace(r'\begin{document}',labels+r'\begin{document}'))
+assert hu[0]==run('labels-en',source)[0]
+assert "Unknown summary label 'nosuchlabel'" in hu[2].replace('\n','')
+t=pdf_text('labels')
+assert all(v in t for v in HU.values()),[v for v in HU.values() if v not in t]
+assert not any(w in t for w in ['Characters','Total','Unreviewed','AI review legend']),t
+print('Localised labels replace every English label; counts unchanged; all PDF checks passed.')

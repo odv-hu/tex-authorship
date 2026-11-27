@@ -141,11 +141,6 @@ whether captions, floats and footnotes count toward the section they appear in, 
 how the unit level is chosen. Keep the output optional (a separate command or an
 option of the summary) and leave the existing totals unchanged.
 
-### Localised summary labels
-
-Configurable column headings, review-state labels and “Total”, for example
-*Szerző*, *Karakterek*, *Szavak*, *Összesen*.
-
 ### Disclosure helper
 
 Draft an editable AI-use statement from attribution and review information.

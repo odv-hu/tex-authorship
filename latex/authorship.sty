@@ -35,6 +35,25 @@
 \providecommand\AuthorshipColor[2]{}
 \providecommand\AuthorshipGradient[2]{}
 \providecommand\AuthorshipCitationColor[1]{}
+% Summary labels (ADR-0022): \AuthorshipLabel{total}{Összesen}. Unknown keys warn.
+\def\authorship@label@author{Author}
+\def\authorship@label@characters{Characters}
+\def\authorship@label@words{Words}
+\def\authorship@label@total{Total}
+\def\authorship@label@progress{AI review progress (typeset words)}
+\def\authorship@label@unreviewed{Unreviewed}
+\def\authorship@label@reviewed{Reviewed, unchanged since review}
+\def\authorship@label@revised{Revised, unchanged since review}
+\def\authorship@label@changed{Changed since review}
+\def\authorship@label@aitotal{AI-origin total}
+\def\authorship@label@legend{AI review legend (origin unchanged)}
+\def\authorship@label@legendreviewed{Reviewed (single bar)}
+\def\authorship@label@legendrevised{Revised (double bar)}
+\def\authorship@label@legendchanged{Changed since review (short bar)}
+\newcommand\AuthorshipLabel[2]{%
+  \@ifundefined{authorship@label@#1}%
+    {\PackageWarning{authorship}{Unknown summary label '#1' ignored}}%
+    {\expandafter\def\csname authorship@label@#1\endcsname{#2}}}
 % Name for your own (unmarked) text in the summary: \AuthorshipOwner{Balázs Fürtön}
 \newcommand\AuthorshipOwnerName{Mine}
 \newcommand\AuthorshipOwner[1]{\gdef\AuthorshipOwnerName{#1}}

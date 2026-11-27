@@ -9,6 +9,12 @@ Versions before 0.1.20 are listed on the
 
 ## [Unreleased]
 
+### Added
+
+- `\AuthorshipLabel{key}{text}` sets the labels of the summary table, the review
+  progress table and the review legend, for example `\AuthorshipLabel{total}{Összesen}`.
+  The defaults stay English.
+
 ## [0.1.23] - 2026-11-08
 
 ### Added

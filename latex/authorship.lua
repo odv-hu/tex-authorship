@@ -440,6 +440,10 @@ local function pct(n, total)
   return string.format("%.1f\\,\\%%", 100 * n / total)
 end
 
+-- Summary labels are TeX macros set by \\AuthorshipLabel (ADR-0022), so accents and
+-- TeX markup work in them. The defaults in authorship.sty are the English labels.
+local function label(key) return "\\csname authorship@label@" .. key .. "\\endcsname" end
+
 function M.typeset_review_legend()
   local seen, rows = {}, {}
   for _,r in ipairs(review_records) do
@@ -447,13 +451,13 @@ function M.typeset_review_legend()
     if r.used and not seen[key] then seen[key] = true; rows[#rows+1] = r end
   end
   if #rows == 0 then return end
-  tex.sprint("\\par\\begingroup\\attribute" .. attr .. "=" .. EXCLUDED .. "\\relax\\small\\medskip\\noindent AI review legend (origin unchanged):\\par")
+  tex.sprint("\\par\\begingroup\\attribute" .. attr .. "=" .. EXCLUDED .. "\\relax\\small\\medskip\\noindent " .. label("legend") .. ":\\par")
   for _,r in ipairs(rows) do
     local c = {}
     for h in r.color:gmatch("%x%x") do c[#c+1] = string.format("%.3f",tonumber(h,16)/255) end
     tex.sprint("\\noindent\\AuthorshipSwatchBox{\\AuthorshipBand{1}{" .. table.concat(c," ") .. "}}\\enspace ")
-    local label = r.stale and "Changed since review (short bar): " or r.status == "revised" and "Revised (double bar): " or "Reviewed (single bar): "
-    tex.sprint(-2,label .. r.by)
+    tex.sprint(label(r.stale and "legendchanged" or r.status == "revised" and "legendrevised" or "legendreviewed") .. ": ")
+    tex.sprint(-2, r.by)
     tex.sprint("\\par")
   end
   tex.sprint("\\endgroup")
@@ -462,12 +466,6 @@ end
 -- Review progress of AI-origin words from the previous run (ADR-0021). The summary
 -- appends it only when that run met review metadata, so documents without reviews keep
 -- their output; \AuthorshipReviewProgress asks for it explicitly.
-local REVIEW_LABELS = {
-  unreviewed = "Unreviewed",
-  reviewed   = "Reviewed, unchanged since review",
-  revised    = "Revised, unchanged since review",
-  changed    = "Changed since review",
-}
 function M.typeset_review_progress(full_width, explicit)
   local prev = M.previous_review
   if not prev or prev == "" then
@@ -489,12 +487,12 @@ function M.typeset_review_progress(full_width, explicit)
   else
     tex.sprint("\\begin{tabular}{@{}l@{\\hspace{1.5em}}rr@{}}")
   end
-  tex.sprint("AI review progress (typeset words)&Words&\\%\\\\\\hline")
+  tex.sprint(label("progress") .. "&" .. label("words") .. "&\\%\\\\\\hline")
   for _, state in ipairs(REVIEW_STATES) do
     local n = v[state] or 0
-    tex.sprint(string.format("%s&%s&%s\\\\", REVIEW_LABELS[state], group_digits(n), pct(n, total)))
+    tex.sprint(string.format("%s&%s&%s\\\\", label(state), group_digits(n), pct(n, total)))
   end
-  tex.sprint(string.format("\\hline AI-origin total&\\textbf{%s}&%s\\\\", group_digits(total), pct(total, total)))
+  tex.sprint(string.format("\\hline %s&\\textbf{%s}&%s\\\\", label("aitotal"), group_digits(total), pct(total, total)))
   tex.sprint((full_width and "\\end{tabular*}" or "\\end{tabular}") .. "\\par\\endgroup")
 end
 
@@ -524,7 +522,8 @@ function M.typeset_summary(full_width)
   else
     tex.sprint("\\begin{tabular}{@{}l@{\\hspace{0.5em}}l@{\\hspace{1.5em}}rr@{\\hspace{1.5em}}rr@{}}")
   end
-  tex.sprint("\\multicolumn{2}{@{}l@{\\hspace{1.5em}}}{Author}&Characters&\\%&Words&\\%\\\\\\hline")
+  tex.sprint("\\multicolumn{2}{@{}l@{\\hspace{1.5em}}}{" .. label("author") .. "}&" .. label("characters") ..
+    "&\\%&" .. label("words") .. "&\\%\\\\\\hline")
   for _, r in ipairs(rows) do
     tex.sprint(swatch(r.key) .. "&")
     if r.key == "Mine" then
@@ -534,7 +533,7 @@ function M.typeset_summary(full_width)
     end
     tex.sprint(string.format("&%s&%s&%s&%s\\\\", group_digits(r.c), pct(r.c, tc), words(r.w), wpct(r.w)))
   end
-  tex.sprint(string.format("\\hline&Total&\\textbf{%s}&%s&\\textbf{%s}&%s\\\\", group_digits(tc), pct(tc, tc), words(tw), wpct(tw)))
+  tex.sprint(string.format("\\hline&%s&\\textbf{%s}&%s&\\textbf{%s}&%s\\\\", label("total"), group_digits(tc), pct(tc, tc), words(tw), wpct(tw)))
   tex.sprint((full_width and "\\end{tabular*}" or "\\end{tabular}") .. "\\endgroup")
   M.typeset_review_progress(full_width, false)
   M.typeset_review_legend()
