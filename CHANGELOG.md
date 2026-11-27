@@ -9,6 +9,12 @@ Versions before 0.1.20 are listed on the
 
 ## [Unreleased]
 
+### Fixed
+
+- The placeholder that `\AuthorshipSummary` and `\AuthorshipReviewProgress` print on
+  the first LuaLaTeX run no longer counts as your words, so the second run already
+  shows correct numbers instead of the third.
+
 ## [0.1.23] - 2026-11-08
 
 ### Added

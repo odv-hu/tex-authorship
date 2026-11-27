@@ -440,6 +440,12 @@ local function pct(n, total)
   return string.format("%.1f\\,\\%%", 100 * n / total)
 end
 
+-- Placeholders printed on the first run stay out of the counts like the tables they stand
+-- for, so the second run already shows correct numbers (#23).
+local function excluded(text)
+  return "\\begingroup\\attribute" .. attr .. "=" .. EXCLUDED .. "\\relax " .. text .. "\\endgroup"
+end
+
 function M.typeset_review_legend()
   local seen, rows = {}, {}
   for _,r in ipairs(review_records) do
@@ -471,7 +477,9 @@ local REVIEW_LABELS = {
 function M.typeset_review_progress(full_width, explicit)
   local prev = M.previous_review
   if not prev or prev == "" then
-    if explicit then tex.sprint("\\textit{(AI review progress appears after the next LuaLaTeX run.)}") end
+    if explicit then
+      tex.sprint(excluded("\\textit{(AI review progress appears after the next LuaLaTeX run.)}"))
+    end
     return
   end
   local v = {}
@@ -501,7 +509,7 @@ end
 function M.typeset_summary(full_width)
   local prev = M.previous
   if not prev or prev == "" then
-    tex.sprint("\\textit{(Authorship summary appears after the next LuaLaTeX run.)}")
+    tex.sprint(excluded("\\textit{(Authorship summary appears after the next LuaLaTeX run.)}"))
     return
   end
   local rows, tc, tw, have_words = {}, 0, 0, true
