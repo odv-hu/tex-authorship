@@ -95,8 +95,7 @@ artifacts on failure, rather than depending on one-off local scripts.
 
 - Improve and test consistent protection against markers in inline verbatim, URLs and
   custom verbatim environments across all editing workflows.
-- Address known PDF gaps: explicit `\textcolor` spanning line breaks and running heads
-  inside `multicols` (ADR-0005).
+- Address the known PDF gap of running heads inside `multicols` (ADR-0005).
 - Test and document narrow margins, two-column layouts and reviewer bars near other
   marginal content; keep unsupported layout cases explicit.
 - Harden bibliography/root discovery, cancellation and large-project behaviour. Make

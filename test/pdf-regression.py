@@ -83,4 +83,22 @@ print('Legend excluded from counts; included-file/multi-page/nested/float geomet
 full=run('fullwidth',source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth'))
 assert 'AI review progress (typeset words)' in pdf_text('fullwidth')
 assert full[0]==run('fullwidth-plain', '\n'.join(l for l in source.replace(r'\AuthorshipSummary',r'\AuthorshipSummaryFullWidth').split('\n') if not l.startswith('% authorship-review:')))[0]
-print('Full-width summary counts match; all PDF checks passed.')
+print('Full-width summary counts match.',flush=True)
+# Explicit colour inside a passage keeps its colour on every line and across a page
+# break (#5), in solid and gradient mode; the passage colour comes back after it.
+blue=' '.join('blue%d'%i for i in range(700));red=' '.join('red%d'%i for i in range(40))
+for opt in ['','gradient']:
+ fixture=(r'\documentclass{article}\usepackage{xcolor}\usepackage[%s]{authorship}\sloppy\begin{document}'%opt+'\n%[&AI: Claude]\n'
+  +r'Passage text before. \textcolor{blue}{'+blue+'} Passage text after.\n\n'+r'\textcolor[rgb]{1,0,0}{'+red+'} Passage again.\n%[/&AI: Claude]\nOwner text.\n'+r'\end{document}')
+ run('textcolor-'+(opt or 'solid'),fixture)
+ with pdfplumber.open(out/('textcolor-'+(opt or 'solid')+'.pdf')) as pdf:
+  assert len(pdf.pages)>1
+  # colours of the glyphs of each word (a gradient gives one word several colours)
+  words=[(w['text'],{tuple(c['non_stroking_color']) for c in page.chars if w['x0']-0.01<=c['x0']<w['x1'] and abs(c['top']-w['top'])<1})
+   for page in pdf.pages for w in page.extract_words(x_tolerance=1)]
+ colour=lambda prefix:set().union(*[c for t,c in words if t.startswith(prefix)])
+ assert colour('blue')=={(0,0,1)} and colour('red')=={(1,0,0)},(opt,colour('blue'),colour('red'))
+ passage=colour('Passage')|colour('before')|colour('after')|colour('again')
+ assert passage and all(c not in [(0,),(0,0,1),(1,0,0)] for c in passage),(opt,passage)
+ assert colour('Owner')=={(0,)},(opt,colour('Owner'))
+print('Explicit colour survives line and page breaks; passage colour resumes after it; all PDF checks passed.')
