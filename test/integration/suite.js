@@ -99,10 +99,20 @@ async function interactiveFlows(dir) {
   await until(()=>doc.getText().includes('Pasted words.'),'Normal paste did not insert text');
   assert.equal(doc.getText(),'Before Pasted words.after.\n');
   await vscode.commands.executeCommand('undo');assert.equal(doc.getText(),'Before after.\n');
-  editor.selection=new vscode.Selection(0,7,0,7);
-  await vscode.commands.executeCommand('editor.action.pasteAs',{kind:'authorship.ai-chatgpt'});
-  await until(()=>doc.getText()!=='Before after.\n','Paste as AI: ChatGPT did not change the document');
-  assert.equal(doc.getText(),'Before \n%[&AI: ChatGPT]\nPasted words.%\n%[/&AI: ChatGPT]\nafter.\n');
+  // editor.action.pasteAs picks a paste option by kind. Its argument changed between VS
+  // Code versions ({kind} earlier, {preferences} later), so try both and report which.
+  const wrapped='Before \n%[&AI: ChatGPT]\nPasted words.%\n%[/&AI: ChatGPT]\nafter.\n',kind='authorship.ai-chatgpt';
+  let used=null;
+  for (const args of [{preferences:[kind]},{kind}]) {
+   editor.selection=new vscode.Selection(0,7,0,7);
+   await vscode.commands.executeCommand('editor.action.pasteAs',args);
+   for (let i=0;i<40 && doc.getText()==='Before after.\n';i++) await wait(50);
+   await vscode.commands.executeCommand('workbench.action.closeQuickOpen');
+   if (doc.getText()===wrapped) { used=Object.keys(args)[0]; break; }
+   while (doc.getText()!=='Before after.\n') await vscode.commands.executeCommand('undo');
+  }
+  assert.ok(used,'No editor.action.pasteAs argument applied the AI: ChatGPT paste option');
+  console.log('editor.action.pasteAs argument used: '+used);
   console.log('PASS: normal paste stays plain; paste option for an author wraps the text');
 
   // Explicit paste (Paste as…, ⌘⌥V): author, owner, cancel.
