@@ -53,6 +53,120 @@ async function run() {
  assert.equal(vscode.workspace.getConfiguration('texAuthorship').get('highlight'),true);
  assert.ok(!fs.existsSync(process.env.TEXMFHOME),'Tests must not install the LaTeX package');
  console.log('PASS: real colour provider/presentations; theme and highlighting smoke checks');
- console.log('Visual inspection of borders/labels, picker interaction and clipboard paste remains on the manual checklist.');
+ await interactiveFlows(dir);
+ console.log('Visual inspection of borders/labels and the paste-options button itself remains on the manual checklist.');
+}
+
+/** Replace a window function for one flow; the answers come from the test (#2). */
+function stub(name,fn) {
+ const original=vscode.window[name];
+ vscode.window[name]=fn;
+ if (vscode.window[name]!==fn) Object.defineProperty(vscode.window,name,{value:fn,configurable:true,writable:true});
+ return ()=>{vscode.window[name]=original;if(vscode.window[name]!==original)Object.defineProperty(vscode.window,name,{value:original,configurable:true,writable:true});};
+}
+/** Answer quick picks in order. Each answer gets (items, options) and returns the item to pick, or undefined to cancel. */
+function answerPicks(answers) {
+ const seen=[];
+ const restore=stub('showQuickPick',async(items,options)=>{
+  const list=await items;seen.push({items:list,options});
+  const answer=answers.shift();assert.ok(answer,'Unexpected quick pick: '+(options?.title||''));
+  return answer(list,options);
+ });
+ return {seen,done:()=>{restore();assert.equal(answers.length,0,'Quick picks not shown: '+answers.length);}};
+}
+const byLabel=text=>items=>{const item=items.find(i=>i.label.includes(text));assert.ok(item,'No quick pick item '+text+' in '+items.map(i=>i.label).join(', '));return item;};
+const cancel=()=>undefined;
+
+async function open(dir,name,text) {
+ const uri=vscode.Uri.file(path.join(dir,name));
+ await vscode.workspace.fs.writeFile(uri,Buffer.from(text));
+ const doc=await vscode.workspace.openTextDocument(uri);
+ const editor=await vscode.window.showTextDocument(doc);
+ assert.equal(doc.languageId,'latex');
+ return {uri,doc,editor};
+}
+
+async function interactiveFlows(dir) {
+ const warnings=[];
+ const restoreWarning=stub('showWarningMessage',async(message)=>{warnings.push(String(message));return undefined;});
+ const restoreInfo=stub('showInformationMessage',async(message)=>{warnings.push(String(message));return undefined;});
+ try {
+  // Normal paste stays plain; the paste options offer each author (the button UI itself is manual).
+  await vscode.env.clipboard.writeText('Pasted words.');
+  let {doc,editor}=await open(dir,'paste.tex','Before after.\n');
+  editor.selection=new vscode.Selection(0,7,0,7);
+  await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+  await until(()=>doc.getText().includes('Pasted words.'),'Normal paste did not insert text');
+  assert.equal(doc.getText(),'Before Pasted words.after.\n');
+  await vscode.commands.executeCommand('undo');assert.equal(doc.getText(),'Before after.\n');
+  editor.selection=new vscode.Selection(0,7,0,7);
+  await vscode.commands.executeCommand('editor.action.pasteAs',{kind:'authorship.ai-chatgpt'});
+  await until(()=>doc.getText()!=='Before after.\n','Paste as AI: ChatGPT did not change the document');
+  assert.equal(doc.getText(),'Before \n%[&AI: ChatGPT]\nPasted words.%\n%[/&AI: ChatGPT]\nafter.\n');
+  console.log('PASS: normal paste stays plain; paste option for an author wraps the text');
+
+  // Explicit paste (Paste as…, ⌘⌥V): author, owner, cancel.
+  ({doc,editor}=await open(dir,'explicit.tex','Start end.\n'));
+  for (const [answer,check] of [
+   [byLabel('AI: ChatGPT'),text=>assert.equal(text,'Start \n%[&AI: ChatGPT]\nPasted words.%\n%[/&AI: ChatGPT]\nend.\n')],
+   [byLabel('Test Owner'),text=>assert.equal(text,'Start Pasted words.end.\n')],
+   [cancel,text=>assert.equal(text,'Start end.\n')],
+  ]) {
+   editor.selection=new vscode.Selection(0,6,0,6);
+   const picks=answerPicks([answer]);
+   await vscode.commands.executeCommand('texAuthorship.pasteAs');picks.done();
+   assert.equal(picks.seen[0].options.title,'Paste as…');
+   check(doc.getText());
+   if (doc.getText()!=='Start end.\n') await vscode.commands.executeCommand('undo');
+   assert.equal(doc.getText(),'Start end.\n');
+  }
+  console.log('PASS: explicit paste as an author, as the owner, and cancelled');
+
+  // Mark Selection: choose an author, or cancel the picker.
+  ({doc,editor}=await open(dir,'mark.tex','Keep this sentence. Mark this one.\n'));
+  editor.selection=new vscode.Selection(0,20,0,34);
+  let picks=answerPicks([cancel]);
+  await vscode.commands.executeCommand('texAuthorship.markSelection');picks.done();
+  assert.equal(doc.getText(),'Keep this sentence. Mark this one.\n');
+  picks=answerPicks([byLabel('AI: ChatGPT')]);
+  await vscode.commands.executeCommand('texAuthorship.markSelection');picks.done();
+  assert.equal(doc.getText(),'Keep this sentence. \n%[&AI: ChatGPT]\nMark this one.\n%[/&AI: ChatGPT]\n');
+  console.log('PASS: mark selection with an author; cancelling leaves the text');
+
+  // Bibliography picker: search fields, a missing file, a duplicate key, choosing other
+  // files, and reassigning the source of an existing reference passage.
+  await vscode.workspace.fs.writeFile(vscode.Uri.file(path.join(dir,'refs.bib')),Buffer.from([
+   '@article{smith2024, author={Smith, Ann}, year={2024}, title={A Title}}',
+   '@book{dup, author={One}, year={2001}, title={First}}',
+   '@book{dup, author={Two}, year={2002}, title={Second}}',''].join('\n')));
+  await vscode.workspace.fs.writeFile(vscode.Uri.file(path.join(dir,'other.bib')),Buffer.from('@misc{jones2020, author={Jones}, year={2020}, title={Other}}\n'));
+  ({doc,editor}=await open(dir,'paper.tex','\\documentclass{article}\n\\begin{document}\nQuoted text.\n\\bibliography{refs,missing}\n\\end{document}\n'));
+  editor.selection=new vscode.Selection(2,0,2,12);
+  picks=answerPicks([byLabel('Reference'),
+   (items,options)=>{
+    assert.ok(options.matchOnDescription && options.matchOnDetail,'search covers author, year and title');
+    const smith=items.find(i=>i.label==='smith2024');assert.match(smith.description,/Smith, Ann · 2024/);assert.match(smith.detail,/A Title/);
+    const problems=items.find(i=>i.label.startsWith('Bibliography warnings'));
+    assert.match(problems.detail,/missing\.bib/);assert.match(problems.detail,/Duplicate key dup/);
+    return items.find(i=>i.label==='dup');
+   },
+   byLabel('smith2024')]);
+  await vscode.commands.executeCommand('texAuthorship.markSelection');picks.done();
+  assert.ok(warnings.some(w=>w.includes('dup occurs more than once')),'duplicate key refused with a warning');
+  assert.equal(doc.getText().split('\n').slice(2,6).join('\n'),['%[*Reference]',M.sourceComment('smith2024'),'Quoted text.','%[/*Reference]'].join('\n'));
+  editor.selection=new vscode.Selection(4,0,4,0);
+  const restoreDialog=stub('showOpenDialog',async()=>[vscode.Uri.file(path.join(dir,'other.bib'))]);
+  try {
+   picks=answerPicks([
+    (items)=>{assert.ok(items.some(i=>i.label==='smith2024'),'current source listed');return items.find(i=>i.action==='files');},
+    (items)=>{assert.ok(!items.some(i=>i.label==='smith2024'),'files replaced');return items.find(i=>i.label==='jones2020');}]);
+   await vscode.commands.executeCommand('texAuthorship.associateReference');picks.done();
+  } finally { restoreDialog(); }
+  assert.equal(doc.lineAt(3).text,M.sourceComment('jones2020'));
+  picks=answerPicks([byLabel('Remove source association')]);
+  await vscode.commands.executeCommand('texAuthorship.associateReference');picks.done();
+  assert.equal(doc.getText().split('\n').slice(2,5).join('\n'),['%[*Reference]','Quoted text.','%[/*Reference]'].join('\n'));
+  console.log('PASS: bibliography picker search fields, missing file, duplicate key, choosing files, reassignment and removal');
+ } finally { restoreWarning(); restoreInfo(); }
 }
 module.exports={run};
