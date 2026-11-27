@@ -9,6 +9,12 @@ Versions before 0.1.20 are listed on the
 
 ## [Unreleased]
 
+### Fixed
+
+- `\textcolor` text inside a marked passage keeps its colour when it breaks across
+  lines or pages. Before, the second line could come out in the passage colour, and
+  `\textcolor` at the very start of a passage was overridden on its first line too.
+
 ## [0.1.23] - 2026-11-08
 
 ### Added

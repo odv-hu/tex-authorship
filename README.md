@@ -285,7 +285,7 @@ The extension refuses to put them there.
 - Unmatched or mismatched markers show up as warnings in the Problems panel.
 - In the PDF, LuaLaTeX reads each marker line before TeX discards the comment and tags every character in the passage with its author.
 Footnotes and floats keep their colour wherever they land. Running heads and page numbers stay black.
-- Text coloured explicitly (`\textcolor`) inside a marked passage keeps its own colour.
+- Text coloured explicitly (`\textcolor`) inside a marked passage keeps its own colour, also where it breaks across lines or pages.
 
 ## Related tools
 

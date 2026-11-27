@@ -25,7 +25,8 @@ The owner normally builds with pdfLaTeX.
 - Line and page breaks are identical with colouring on and off, because colour is added after layout.
 - The coloured draft needs a LuaLaTeX build; LuaLaTeX and pdfLaTeX fonts can differ slightly, so drafts may not match a pdfLaTeX build page for page.
 - `\AuthorshipOpen`/`\AuthorshipClose` are expandable so markers inside tables do not start a new cell.
-- Known gaps: a `\textcolor` that spans a line break inside a passage can lose its colour on the second line; `multicol` replaces the output routine, so running heads inside `multicols` may be coloured.
+- Explicit colour (`\textcolor`, `\color` inside a line) shares colour stack 0 with the passage colours. The shipout filter keeps a mirror of that stack across lines and pages: it does not push a passage colour while explicit colour is on top, and when it closes a passage colour under explicit colour that is still open, it pops both and pushes the explicit colour again. Explicit colour therefore keeps winning on every line and across page breaks (#5). Colour pushed in a vertical list (the output routine's normal colour, a `\color` between paragraphs) is not treated as explicit, so passage colour still applies under it.
+- Known gaps: `multicol` replaces the output routine, so running heads inside `multicols` may be coloured.
 
 ## Alternatives considered
 

@@ -225,6 +225,8 @@ end
 
 local DISC = node.id("disc")
 local GLUE = node.id("glue")
+local WHATSIT = node.id("whatsit")
+local COLORSTACK = node.subtype("pdf_colorstack")
 local EXCLUDED = 0x7FFFFF00     -- attribute value for text left out of the counts (the summary itself)
 
 local stats = {}                -- key ("Mine" or author key) -> {chars, words}
@@ -331,7 +333,56 @@ local function review_bars(line)
   end
 end
 
-local function process(head)
+-- Colour stack 0 is shared with explicit colour (\textcolor, \color), which arrives
+-- as push and pop whatsits. Stack operations are last in, first out, so a passage
+-- colour closed at the end of a line while explicit colour opened after it is still
+-- open would pop the explicit colour instead, and the next line would lose it (#5).
+-- `colour_stack` mirrors stack 0 across lines and pages: entries are
+-- {ours = true} or {data = "...", explicit = true|false}. A push met inside a line of
+-- text is explicit colour; pushes in vertical lists (the output routine's normal
+-- colour around the page body) are not. Passage colour is not pushed while explicit
+-- colour is on top, so explicit colour keeps winning on every line.
+local colour_stack = {}
+
+local function colour_op(n)
+  if n.id ~= WHATSIT or n.subtype ~= COLORSTACK or n.stack ~= 0 then return nil end
+  return n.command          -- 0 set, 1 push, 2 pop, 3 current
+end
+
+local function explicit_on_top()
+  local top = colour_stack[#colour_stack]
+  return top and top.explicit
+end
+
+local function push_ours(head, before, c)
+  colour_stack[#colour_stack + 1] = { ours = true }
+  return node.insert_before(head, before, push(c))
+end
+
+-- Close the passage colour. Entries pushed after it are popped with it and pushed
+-- again, so they survive with the same colour.
+local function pop_ours(head, before, at_end)
+  local k = #colour_stack
+  while k > 0 and not colour_stack[k].ours do k = k - 1 end
+  local function put(n)
+    if at_end then node.insert_after(head, node.tail(head), n)
+    else head = node.insert_before(head, before, n) end
+  end
+  if k == 0 then put(pop()); return head end   -- not mirrored: behave as before
+  local above = {}
+  for j = k + 1, #colour_stack do above[#above + 1] = colour_stack[j] end
+  for _ = k, #colour_stack do put(pop()) end
+  for j = #colour_stack, k, -1 do colour_stack[j] = nil end
+  for _, e in ipairs(above) do
+    local n = node.new("whatsit", "pdf_colorstack")
+    n.stack, n.command, n.data = 0, 1, e.data
+    put(n)
+    colour_stack[#colour_stack + 1] = e
+  end
+  return head
+end
+
+local function process(head, horizontal)
   local current = nil
   local last_content = nil      -- id of the last glyph/disc/box/rule, to spot lines ending in a hyphen
   local n = head
@@ -340,27 +391,37 @@ local function process(head)
     if id == GLYPH or id == RULE then
       local key, c = colour_for(n)
       if id == RULE then end_word() end
-      if key ~= current then
-        if current then head = node.insert_before(head, n, pop()) end
-        if key then head = node.insert_before(head, n, push(c)) end
+      if key ~= current and not (current == nil and explicit_on_top()) then
+        if current then head = pop_ours(head, n) end
+        if key and not explicit_on_top() then head = push_ours(head, n, c) else key = nil end
         current = key
       end
       last_content = id
     elseif id == GLUE then
       end_word()
+    elseif id == WHATSIT then
+      local op = colour_op(n)
+      if op == 1 then
+        colour_stack[#colour_stack + 1] = { data = n.data, explicit = horizontal or false }
+      elseif op == 2 then
+        if current then head = pop_ours(head, n); current = nil end
+        colour_stack[#colour_stack] = nil
+      elseif op == 0 and #colour_stack > 0 and not colour_stack[#colour_stack].ours then
+        colour_stack[#colour_stack].data = n.data
+      end
     elseif id == DISC then
       carry_counted = word_counted
       last_content = id
     elseif id == HLIST or id == VLIST then
-      if current then head = node.insert_before(head, n, pop()); current = nil end
+      if current then head = pop_ours(head, n); current = nil end
       if carry then in_word, word_counted, carry = true, carry_counted, false else end_word() end
-      if n.head then n.head = process(n.head) end
+      if n.head then n.head = process(n.head, id == HLIST) end
       if id == HLIST and n.subtype == 1 and n.head then review_bars(n) end
       last_content = id
     end
     n = n.next
   end
-  if current then node.insert_after(head, node.tail(head), pop()) end
+  if current then head = pop_ours(head, nil, true) end
   if last_content == DISC then carry = true end
   return head
 end
